@@ -1,5 +1,11 @@
 
---[[ TrinketMenu 3.41 ]]--
+-- Strict Engine Dependency Guard (Mandatory ClassicAPI v1.13.3+ & SuperWoW v2.2+)
+if not (CLASSIC_API_VERSION and SUPERWOW_VERSION) then
+	DEFAULT_CHAT_FRAME:AddMessage("|cffff2020[Fatal Error]|r TrinketMenu requires ClassicAPI.dll (v1.13.3+) & SuperWoW (v2.2+)! Please ensure both DLLs are loaded.", 1, 0.2, 0.2)
+	return
+end
+
+--[[ TrinketMenu 3.80 ]]--
 TrinketMenu = {}
 
 function TrinketMenu.LoadDefaults()
@@ -45,7 +51,7 @@ end
 
 --[[ Misc Variables ]]--
 
-TrinketMenu_Version = 3.41
+TrinketMenu_Version = 3.80
 BINDING_HEADER_TRINKETMENU = "TrinketMenu"
 
 TrinketMenu.MaxTrinkets = 30 -- add more to TrinketMenu_MenuFrame if this changes
@@ -261,10 +267,48 @@ function TrinketMenu.Initialize()
 	TrinketMenu.CreateTimer("TooltipUpdate",TrinketMenu.TooltipUpdate,1,1)
 	TrinketMenu.CreateTimer("CooldownUpdate",TrinketMenu.CooldownUpdate,1,1)
 
-	TrinketMenu.oldUseInventoryItem = UseInventoryItem
-	UseInventoryItem = TrinketMenu.newUseInventoryItem
-	TrinketMenu.oldUseAction = UseAction
-	UseAction = TrinketMenu.newUseAction
+	-- ClassicAPI Secure Hooking
+	hooksecurefunc("UseInventoryItem", function(slot)
+		if (slot==13 or slot==14) and not (MerchantFrame and MerchantFrame:IsVisible()) then
+			TrinketMenu.ReflectTrinketUse(slot)
+		end
+	end)
+
+	hooksecurefunc("UseAction", function(slot,cursor,self)
+		if IsEquippedAction(slot) then
+			local actionType, actionID = GetActionInfo(slot)
+			local link13 = GetInventoryItemLink("player", 13)
+			local link14 = GetInventoryItemLink("player", 14)
+			local _, _, id13 = string.find(link13 or "", "item:(%d+)")
+			local _, _, id14 = string.find(link14 or "", "item:(%d+)")
+			if actionType == "item" and actionID then
+				if tostring(actionID) == tostring(id13) then
+					TrinketMenu.ReflectTrinketUse(13)
+				elseif tostring(actionID) == tostring(id14) then
+					TrinketMenu.ReflectTrinketUse(14)
+				end
+			else
+				local actTex = GetActionTexture(slot)
+				if actTex and actTex == GetInventoryItemTexture("player", 13) then
+					TrinketMenu.ReflectTrinketUse(13)
+				elseif actTex and actTex == GetInventoryItemTexture("player", 14) then
+					TrinketMenu.ReflectTrinketUse(14)
+				end
+			end
+		end
+	end)
+
+	-- Rule C8: Child Cooldown Mouse Passthrough
+	local cd0 = TrinketMenu_Trinket0Cooldown
+	if cd0 and cd0.EnableMouse then cd0:EnableMouse(false) end
+	local cd1 = TrinketMenu_Trinket1Cooldown
+	if cd1 and cd1.EnableMouse then cd1:EnableMouse(false) end
+	for i = 1, 30 do
+		local mcd = getglobal("TrinketMenu_Menu" .. i .. "Cooldown")
+		if mcd and mcd.EnableMouse then
+			mcd:EnableMouse(false)
+		end
+	end
 
 	TrinketMenu.InitOptions()
 
@@ -483,58 +527,52 @@ function TrinketMenu.MainFrame_OnMouseDown(arg1)
 	end
 end
 
---[[ Timers ]]
+--[[ Timers (Native C++ C_Timer Architecture) ]]
 
 function TrinketMenu.InitTimers()
 	TrinketMenu.TimerPool = {}
-	TrinketMenu.Timers = {}
+	TrinketMenu.ActiveTimers = {}
+	if TrinketMenu_TimersFrame then
+		TrinketMenu_TimersFrame:SetScript("OnUpdate", nil)
+		TrinketMenu_TimersFrame:Hide()
+	end
 end
 
 function TrinketMenu.CreateTimer(name,func,delay,rep)
-	TrinketMenu.TimerPool[name] = { func=func,delay=delay,rep=rep,elapsed=delay }
+	TrinketMenu.TimerPool[name] = { func=func, delay=delay, rep=rep }
 end
 
 function TrinketMenu.IsTimerActive(name)
-	for i,j in ipairs(TrinketMenu.Timers) do
-		if j==name then
-			return i
-		end
-	end
-	return nil
+	return (TrinketMenu.ActiveTimers and TrinketMenu.ActiveTimers[name]) and true or nil
 end
 
 function TrinketMenu.StartTimer(name,delay)
-	TrinketMenu.TimerPool[name].elapsed = delay or TrinketMenu.TimerPool[name].delay
-	if not TrinketMenu.IsTimerActive(name) then
-		table.insert(TrinketMenu.Timers,name)
-		TrinketMenu_TimersFrame:Show()
+	local timerData = TrinketMenu.TimerPool[name]
+	if not timerData then return end
+	TrinketMenu.StopTimer(name)
+	local tDelay = delay or timerData.delay
+	if timerData.rep then
+		TrinketMenu.ActiveTimers[name] = C_Timer.NewTicker(tDelay, timerData.func)
+	else
+		TrinketMenu.ActiveTimers[name] = C_Timer.After(tDelay, function()
+			TrinketMenu.ActiveTimers[name] = nil
+			timerData.func()
+		end)
 	end
 end
 
 function TrinketMenu.StopTimer(name)
-	local idx = TrinketMenu.IsTimerActive(name)
-	if idx then
-		table.remove(TrinketMenu.Timers,idx)
-		if table.getn(TrinketMenu.Timers)<1 then
-			TrinketMenu_TimersFrame:Hide()
+	if TrinketMenu.ActiveTimers and TrinketMenu.ActiveTimers[name] then
+		local t = TrinketMenu.ActiveTimers[name]
+		if type(t) == "table" and t.Cancel then
+			t:Cancel()
 		end
+		TrinketMenu.ActiveTimers[name] = nil
 	end
 end
 
 function TrinketMenu.TimersFrame_OnUpdate()
-	local timerPool
-	for _,name in ipairs(TrinketMenu.Timers) do
-		timerPool = TrinketMenu.TimerPool[name]
-		timerPool.elapsed = timerPool.elapsed - arg1
-		if timerPool.elapsed < 0 then
-			timerPool.func()
-			if timerPool.rep then
-				timerPool.elapsed = timerPool.delay
-			else
-				TrinketMenu.StopTimer(name)
-			end
-		end
-	end
+	-- Legacy OnUpdate decommissioned in favor of C_Timer
 end
 
 function TrinketMenu.TimerDebug()
@@ -757,24 +795,11 @@ function TrinketMenu.ReflectTrinketUse(slot)
 end
 
 function TrinketMenu.newUseInventoryItem(slot)
-	if slot==13 or slot==14 and not MerchantFrame:IsVisible() then
-		TrinketMenu.ReflectTrinketUse(slot)
-	end
-	TrinketMenu.oldUseInventoryItem(slot)
+	-- Securely hooked via ClassicAPI hooksecurefunc
 end
 
 function TrinketMenu.newUseAction(slot,cursor,self)
-	if IsEquippedAction(slot) then
-		TrinketMenu_TooltipScan:SetAction(slot)
-		local _,trinket0 = TrinketMenu.ItemInfo(13)
-		local _,trinket1 = TrinketMenu.ItemInfo(14)
-		if GameTooltipTextLeft1:GetText()==trinket0 then
-			TrinketMenu.ReflectTrinketUse(13)
-		elseif GameTooltipTextLeft1:GetText()==trinket1 then
-			TrinketMenu.ReflectTrinketUse(14)
-		end
-	end
-	TrinketMenu.oldUseAction(slot,cursor,self)
+	-- Securely hooked via ClassicAPI hooksecurefunc
 end
 
 --[[ Tooltips ]]

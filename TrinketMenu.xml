@@ -372,20 +372,6 @@
 
 	<!-- OnUpdate to process all timers -->
 	<Frame name="TrinketMenu_TimersFrame" hidden="true">
-		<Scripts>
-			<OnUpdate>
-				TrinketMenu.TimersFrame_OnUpdate()
-			</OnUpdate>
-		</Scripts>
 	</Frame>
-
-	<!-- Hidden GameTooltip for tooltip scanning -->
-	<GameTooltip name="TrinketMenu_TooltipScan" inherits="GameTooltipTemplate" hidden="true">
-		<Scripts>
-			<OnLoad>
-				this:SetOwner(WorldFrame,"ANCHOR_NONE")
-			</OnLoad>
-		</Scripts>
-	</GameTooltip>
 
 </Ui>

@@ -64,7 +64,7 @@ Toggle, dock, lock, or scale your trinket bars using the `/trinket` or `/trinket
 ### Mandatory Prerequisites:
 This addon strictly requires the Enhanced 1.12.1 Client Extension Stack:
 
-1. [**ClassicAPI v1.13.3+**](https://github.com/brues-code/ClassicAPI) — Mandatory engine DLL.
+1. [**ClassicAPI v1.13.4+**](https://github.com/brues-code/ClassicAPI) — Mandatory engine DLL.
 2. [**SuperWoW v2.2+**](https://github.com/balakethelock/SuperWoW) — Mandatory engine DLL.
 3. [**NamPower v4.6.3+**](https://github.com/Emyrk/nampower) — Mandatory engine DLL.
 4. [**UnitXP SP3 v89+**](https://codeberg.org/konaka/UnitXP_SP3) — Mandatory engine DLL.
@@ -100,7 +100,7 @@ World of Warcraft 1.12.1/
 ## 7. Changelog
 
 ### Version 3.8.0 (Modern Engine Release)
-- **Engine Guard**: Added strict startup dependency check requiring ClassicAPI v1.13.3+ and SuperWoW v2.2+.
+- **Engine Guard**: Added strict startup dependency check requiring ClassicAPI v1.13.4+ and SuperWoW v2.2+.
 - **Hardware Timers**: Replaced Lua `OnUpdate` polling frame with native C++ `C_Timer.After` and `C_Timer.NewTicker`.
 - **Secure Hooking**: Replaced global API function overrides with `hooksecurefunc("UseInventoryItem")` and `hooksecurefunc("UseAction")`.
 - **Tooltip Scanning Eradication**: Removed `TrinketMenu_TooltipScan` and replaced with direct item ID resolution.

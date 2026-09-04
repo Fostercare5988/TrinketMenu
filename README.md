@@ -66,7 +66,7 @@ This addon strictly requires the Enhanced 1.12.1 Client Extension Stack:
 
 1. [**ClassicAPI v1.13.3+**](https://github.com/brues-code/ClassicAPI) — Mandatory engine DLL.
 2. [**SuperWoW v2.2+**](https://github.com/balakethelock/SuperWoW) — Mandatory engine DLL.
-3. [**NamPower v4.6.2+**](https://github.com/Emyrk/nampower) — Mandatory engine DLL.
+3. [**NamPower v4.6.3+**](https://github.com/Emyrk/nampower) — Mandatory engine DLL.
 4. [**UnitXP SP3 v89+**](https://codeberg.org/konaka/UnitXP_SP3) — Mandatory engine DLL.
 5. [**DXVK**](https://github.com/doitsujin/dxvk) — Vulkan frame pacing translation layer.
 6. [**VanillaFixes**](https://github.com/hannesmann/vanillafixes) — Modern OS framerate uncap.

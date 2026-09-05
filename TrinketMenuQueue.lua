@@ -1,3 +1,11 @@
+-- Strict Engine Dependency Guard (Mandatory ClassicAPI v1.13.4+ & SuperWoW v2.2+)
+local MIN_CLASSIC_API = 11304
+
+if not (CLASSIC_API_VERSION and SUPERWOW_VERSION) or 
+   (type(CLASSIC_API_VERSION) == "number" and CLASSIC_API_VERSION < MIN_CLASSIC_API) then
+	return
+end
+
 --[[ TrinketMenuQueue : auto queue system ]]
 
 TrinketMenu.PausedQueue = {} -- 0 or 1 whether queue is paused
@@ -70,7 +78,7 @@ function TrinketMenu.AddToSort(which,id)
 	end
 
 	local found
-	for i=1,table.getn(TrinketMenuQueue.Sort[which]) do
+	for i=1,#TrinketMenuQueue.Sort[which] do
 		found = found or TrinketMenuQueue.Sort[which][i]==id
 	end
 	if not found then
@@ -99,18 +107,18 @@ end
 function TrinketMenu.SortScrollFrameUpdate()
 	local offset = FauxScrollFrame_GetOffset(TrinketMenu_SortScroll)
 	local list = TrinketMenuQueue.Sort[TrinketMenu.CurrentlySorting]
-	FauxScrollFrame_Update(TrinketMenu_SortScroll, list and table.getn(list) or 0, 9, 24)
+	FauxScrollFrame_Update(TrinketMenu_SortScroll, list and #list or 0, 9, 24)
 
 	if list then
 		local r,g,b,found
 		local texture,name,quality
 		local item,itemName,itemIcon
 		for i=1,9 do
-			item = getglobal("TrinketMenu_Sort"..i)
-			itemName = getglobal("TrinketMenu_Sort"..i.."Name")
-			itemIcon = getglobal("TrinketMenu_Sort"..i.."Icon")
+			item = _G["TrinketMenu_Sort"..i]
+			itemName = _G["TrinketMenu_Sort"..i.."Name"]
+			itemIcon = _G["TrinketMenu_Sort"..i.."Icon"]
 			idx = offset+i
-			if idx<=table.getn(list) then
+			if idx<=#list then
 				name,texture,quality = TrinketMenu.GetNameByID(list[idx])
 				itemIcon:SetTexture(texture)
 				itemName:SetText(name)
@@ -131,17 +139,17 @@ function TrinketMenu.SortScrollFrameUpdate()
 end
 
 function TrinketMenu.LockHighlight(frame)
-	if type(frame)=="string" then frame = getglobal(frame) end
+	if type(frame)=="string" then frame = _G[frame] end
 	if not frame then return end
 	frame.lockedHighlight = 1
-	getglobal(frame:GetName().."Highlight"):Show()
+	_G[frame:GetName().."Highlight"]:Show()
 end
 
 function TrinketMenu.UnlockHighlight(frame)
-	if type(frame)=="string" then frame = getglobal(frame) end
+	if type(frame)=="string" then frame = _G[frame] end
 	if not frame then return end
 	frame.lockedHighlight = nil
-	getglobal(frame:GetName().."Highlight"):Hide()
+	_G[frame:GetName().."Highlight"]:Hide()
 end
 
 -- shows tooltip for items in the sort list
@@ -177,7 +185,7 @@ function TrinketMenu.SortValidate()
 	TrinketMenu_MoveUp:Enable()
 	TrinketMenu_MoveDown:Enable()
 	TrinketMenu_MoveBottom:Enable()
-	if selected==0 or table.getn(list)<2 then -- none selected, disable all
+	if selected==0 or #list<2 then -- none selected, disable all
 		TrinketMenu_MoveTop:Disable()
 		TrinketMenu_MoveUp:Disable()
 		TrinketMenu_MoveDown:Disable()
@@ -186,7 +194,7 @@ function TrinketMenu.SortValidate()
 		TrinketMenu_MoveUp:Disable()
 		TrinketMenu_MoveTop:Disable()
 		TrinketMenu_MoveDown:Enable()
-	elseif selected == table.getn(list) then -- bottom selected, disable down
+	elseif selected == #list then -- bottom selected, disable down
 		TrinketMenu_MoveDown:Disable()
 		TrinketMenu_MoveBottom:Disable()
 	end
@@ -215,7 +223,7 @@ function TrinketMenu.SortValidate()
 			parent:SetValue(offset)
 			PlaySound("UChatScrollButton")
 		elseif selected >= (idx+10) then
-			offset = (selected==table.getn(list)) and TrinketMenu_SortScroll:GetVerticalScrollRange() or (parent:GetValue() + (parent:GetHeight() / 2))
+			offset = (selected==#list) and TrinketMenu_SortScroll:GetVerticalScrollRange() or (parent:GetValue() + (parent:GetHeight() / 2))
 			parent:SetValue(offset)
 			PlaySound("UChatScrollButton");
 		end
@@ -229,7 +237,7 @@ function TrinketMenu.SortMove()
 	local list = TrinketMenuQueue.Sort[TrinketMenu.CurrentlySorting]
 	local idx1 = TrinketMenu.SortSelected -- FauxScrollFrame_GetOffset(ItemRack_Config_SortScroll) + 
 	if dir then
-		local idx2 = ((dir=="top") and 1) or ((dir=="bottom") and table.getn(list)) or idx1+dir
+		local idx2 = ((dir=="top") and 1) or ((dir=="bottom") and #list) or idx1+dir
 		local temp = list[idx1]
 		if tonumber(dir) then
 			list[idx1] = list[idx2]
@@ -326,7 +334,7 @@ function TrinketMenu.ProcessAutoQueue(which)
 
 	local start,duration,enable = GetInventoryItemCooldown("player",13+which)
 	local _,_,id,name = string.find(GetInventoryItemLink("player",13+which) or "","item:(%d+).+%[(.+)%]")
-	local icon = getglobal("TrinketMenu_Trinket"..which.."Queue") 
+	local icon = _G["TrinketMenu_Trinket"..which.."Queue"] 
 
 	if not id then return end -- leave if no trinket equipped
 	if IsInventoryItemLocked(13+which) then return end -- leave if slot being swapped
@@ -359,7 +367,7 @@ function TrinketMenu.ProcessAutoQueue(which)
 		TrinketMenu.UpdateCombatQueue()
 	end
 	local list,rank = TrinketMenuQueue.Sort[which]
-	for i=1,table.getn(list) do
+	for i=1,#list do
 		if list[i]==0 then rank=i break end
 		if ready and list[i]==id then rank=i break end
 	end
@@ -404,7 +412,7 @@ function TrinketMenu.SetQueue(which,...)
 		DEFAULT_CHAT_FRAME:AddMessage(errorstub.."First parameter must be 0 for top trinket or 1 for bottom.")
 		return
 	end
-	if table.getn(arg)<1 then
+	if not arg or #arg < 1 then
 		DEFAULT_CHAT_FRAME:AddMessage(errorstub.."Second parameter is either ON, OFF, PAUSE, RESUME or the beginning of a list of trinkets in a sort order.")
 		return
 	end
@@ -421,16 +429,16 @@ function TrinketMenu.SetQueue(which,...)
 		TrinketMenu.PausedQueue[which]=1
 	elseif arg[1]=="RESUME" then
 		TrinketMenu.PausedQueue[which]=nil
-	elseif arg[1]=="SORT" and table.getn(arg)>1 then
+	elseif arg[1]=="SORT" and #arg > 1 then
 		local sortidx,inv,bag,slot,id = 1
-		table.setn(TrinketMenuQueue.Sort[which],0)
+		table.wipe(TrinketMenuQueue.Sort[which])
 		local profile = TrinketMenu.GetProfileID(arg[2])
 		if profile then
-			for i=2,table.getn(TrinketMenuQueue.Profiles[profile]) do
+			for i=2,#TrinketMenuQueue.Profiles[profile] do
 				table.insert(TrinketMenuQueue.Sort[which],TrinketMenuQueue.Profiles[profile][i])
 			end
 		else
-			for i=2,table.getn(arg) do
+			for i=2,#arg do
 				inv,bag,slot = TrinketMenu.FindItem(arg[i],1) -- include inventory
 				if inv then
 					table.insert(TrinketMenuQueue.Sort[which],TrinketMenu.GetID(inv))
@@ -458,7 +466,7 @@ function TrinketMenu.GetQueue(which)
 		return
 	end
 	local trinketList,name = {}
-	for i=1,table.getn(TrinketMenuQueue.Sort[which]) do
+	for i=1,#TrinketMenuQueue.Sort[which] do
 		name = TrinketMenu.GetNameByID(TrinketMenuQueue.Sort[which][i])
 		table.insert(trinketList,name)
 	end
@@ -517,14 +525,14 @@ end
 function TrinketMenu.ProfileScrollFrameUpdate()
 	local offset = FauxScrollFrame_GetOffset(TrinketMenu_ProfileScroll)
 	local list = TrinketMenuQueue.Profiles
-	FauxScrollFrame_Update(TrinketMenu_ProfileScroll, table.getn(list) or 0, 7, 20)
+	FauxScrollFrame_Update(TrinketMenu_ProfileScroll, #list, 7, 20)
 
 	local item
 	for i=1,7 do
 		idx = offset+i
-		item = getglobal("TrinketMenu_Profile"..i)
-		if idx<=table.getn(list) then
-			getglobal("TrinketMenu_Profile"..i.."Name"):SetText(list[idx][1])
+		item = _G["TrinketMenu_Profile"..i]
+		if idx<=#list then
+			_G["TrinketMenu_Profile"..i.."Name"]:SetText(list[idx][1])
 			item:Show()
 			if TrinketMenu.ProfileSelected==idx then
 				item:LockHighlight()
@@ -536,7 +544,7 @@ function TrinketMenu.ProfileScrollFrameUpdate()
 		end
 	end
 
-	if table.getn(list)==0 then
+	if #list==0 then
 		TrinketMenu_Profile1Name:SetText("No profiles saved yet.")
 		TrinketMenu_Profile1:Show()
 		TrinketMenu_Profile1:UnlockHighlight()
@@ -545,7 +553,7 @@ function TrinketMenu.ProfileScrollFrameUpdate()
 end
 
 function TrinketMenu.ProfileList_OnClick()
-	if table.getn(TrinketMenuQueue.Profiles)>0 then
+	if #TrinketMenuQueue.Profiles>0 then
 		local idx = this:GetID() + FauxScrollFrame_GetOffset(TrinketMenu_ProfileScroll)
 		if TrinketMenu.ProfileSelected == idx then
 			TrinketMenu.ProfileSelected = nil
@@ -560,7 +568,7 @@ function TrinketMenu.ProfileList_OnClick()
 end
 
 function TrinketMenu.GetProfileID(name)
-	for i=1,table.getn(TrinketMenuQueue.Profiles) do
+	for i=1,#TrinketMenuQueue.Profiles do
 		if TrinketMenuQueue.Profiles[i][1]==name then
 			return i
 		end
@@ -603,7 +611,7 @@ function TrinketMenu.ProfilesButton_OnClick()
 		table.insert(TrinketMenuQueue.Profiles,1,{name})
 		local list = TrinketMenuQueue.Sort[TrinketMenu.CurrentlySorting]
 		local save = TrinketMenuQueue.Profiles[1]
-		for i=1,table.getn(list) do
+		for i=1,#list do
 			table.insert(save,list[i])
 			if list[i]==0 then
 				break
@@ -618,7 +626,7 @@ function TrinketMenu.ProfilesButton_OnClick()
 end
 
 function TrinketMenu.ProfileList_OnDoubleClick()
-	if table.getn(TrinketMenuQueue.Profiles)>0 then
+	if #TrinketMenuQueue.Profiles>0 then
 		local idx = this:GetID() + FauxScrollFrame_GetOffset(TrinketMenu_ProfileScroll)
 		if TrinketMenuQueue.Profiles[idx] then
 			TrinketMenu.LoadProfile(TrinketMenu.CurrentlySorting,idx)
@@ -629,8 +637,8 @@ end
 function TrinketMenu.LoadProfile(which,idx)
 	local list = TrinketMenuQueue.Sort[which]
 	local load = TrinketMenuQueue.Profiles[idx]
-	table.setn(list,0)
-	for i=2,table.getn(load) do
+	table.wipe(list)
+	for i=2,#load do
 		table.insert(list,load[i])
 	end
 	TrinketMenu_ProfilesFrame:Hide()

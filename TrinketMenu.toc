@@ -1,7 +1,7 @@
 ## Interface: 11200
 ## Title: TrinketMenu
 ## Author: Gello, Fostercare5988
-## Version: 3.8.0
+## Version: 3.9.0
 ## Notes: AddOn to manage trinkets engineered natively for World of Warcraft 1.12.1 (ClassicAPI v1.13.4+, SuperWoW v2.2+, NamPower v4.6.3+, UnitXP SP3 v89+, DXVK).
 ## SavedVariables: TrinketMenuOptions
 ## SavedVariablesPerCharacter: TrinketMenuPerOptions, TrinketMenuQueue

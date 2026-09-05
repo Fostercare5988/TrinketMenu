@@ -1,3 +1,11 @@
+-- Strict Engine Dependency Guard (Mandatory ClassicAPI v1.13.4+ & SuperWoW v2.2+)
+local MIN_CLASSIC_API = 11304
+
+if not (CLASSIC_API_VERSION and SUPERWOW_VERSION) or 
+   (type(CLASSIC_API_VERSION) == "number" and CLASSIC_API_VERSION < MIN_CLASSIC_API) then
+	return
+end
+
 --[[ TrinketMenuOpt.lua : Options and sort window for TrinketMenu ]]
 
 TrinketMenu.CheckOptInfo = {
@@ -43,8 +51,8 @@ function TrinketMenu.InitOptions()
 	TrinketMenu.CreateTimer("DragMinimapButton",TrinketMenu.DragMinimapButton,0,1)
 	TrinketMenu.MoveMinimapButton()
 	local item
-	for i=1,table.getn(TrinketMenu.CheckOptInfo) do
-		item = getglobal("TrinketMenu_Opt"..TrinketMenu.CheckOptInfo[i][1].."Text")
+	for i=1,#TrinketMenu.CheckOptInfo do
+		item = _G["TrinketMenu_Opt"..TrinketMenu.CheckOptInfo[i][1].."Text"]
 		if item then
 			item:SetText(TrinketMenu.CheckOptInfo[i][3])
 			item:SetTextColor(.95,.95,.95)
@@ -131,18 +139,18 @@ end
 
 function TrinketMenu.ValidateChecks()
 	local check,button
-	for i=1,table.getn(TrinketMenu.CheckOptInfo) do
+	for i=1,#TrinketMenu.CheckOptInfo do
 		check = TrinketMenu.CheckOptInfo[i]
-		button = getglobal("TrinketMenu_Opt"..check[1])
+		button = _G["TrinketMenu_Opt"..check[1]]
 		if button then
 			button:SetChecked(TrinketMenuOptions[check[1]]=="ON")
 			if check[5] then
 				if TrinketMenuOptions[check[5]]=="ON" then
 					button:Enable()
-					getglobal("TrinketMenu_Opt"..check[1].."Text"):SetTextColor(.95,.95,.95)
+					_G["TrinketMenu_Opt"..check[1].."Text"]:SetTextColor(.95,.95,.95)
 				else
 					button:Disable()
-					getglobal("TrinketMenu_Opt"..check[1].."Text"):SetTextColor(.5,.5,.5)
+					_G["TrinketMenu_Opt"..check[1].."Text"]:SetTextColor(.5,.5,.5)
 				end
 			end
 		end
@@ -226,7 +234,7 @@ function TrinketMenu.ReflectCooldownFont()
 end
 
 function TrinketMenu.SetCooldownFont(button)
-	local item = getglobal(button.."Time")
+	local item = _G[button.."Time"]
 	if TrinketMenuOptions.LargeCooldown=="ON" then
 		item:SetFont("Fonts\\FRIZQT__.TTF",16,"OUTLINE")
 		item:SetTextColor(1,.82,0,1)
@@ -264,12 +272,12 @@ function TrinketMenu.Tab_OnClick(override)
 		TrinketMenu_ProfilesFrame:Hide()
 	end
 	for i=1,3 do
-		tab = getglobal("TrinketMenu_Tab"..i)
+		tab = _G["TrinketMenu_Tab"..i]
 		if tab then
 			tab:UnlockHighlight()
 		end
 	end
-	getglobal("TrinketMenu_Tab"..id):LockHighlight()
+	_G["TrinketMenu_Tab"..id]:LockHighlight()
 	if id==1 then
 		TrinketMenu_SubOptFrame:Show()
 		if TrinketMenu_SubQueueFrame then

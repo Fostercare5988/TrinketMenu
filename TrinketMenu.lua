@@ -1,11 +1,16 @@
 
 -- Strict Engine Dependency Guard (Mandatory ClassicAPI v1.13.4+ & SuperWoW v2.2+)
-if not (CLASSIC_API_VERSION and SUPERWOW_VERSION) then
-	DEFAULT_CHAT_FRAME:AddMessage("|cffff2020[Fatal Error]|r TrinketMenu requires ClassicAPI.dll (v1.13.4+) & SuperWoW (v2.2+)! Please ensure both DLLs are loaded.", 1, 0.2, 0.2)
+local MIN_CLASSIC_API = 11304
+
+if not (CLASSIC_API_VERSION and SUPERWOW_VERSION) or 
+   (type(CLASSIC_API_VERSION) == "number" and CLASSIC_API_VERSION < MIN_CLASSIC_API) then
+	if DEFAULT_CHAT_FRAME then
+		DEFAULT_CHAT_FRAME:AddMessage("|cffff2020[Fatal Error]|r TrinketMenu requires ClassicAPI (v1.13.4+) & SuperWoW (v2.2+)! Please ensure both DLLs are loaded.", 1, 0.2, 0.2)
+	end
 	return
 end
 
---[[ TrinketMenu 3.80 ]]--
+--[[ TrinketMenu 3.9.0 ]]--
 TrinketMenu = {}
 
 function TrinketMenu.LoadDefaults()
@@ -883,12 +888,12 @@ function TrinketMenu.OnTooltip(line1,line2)
 			GameTooltip:Show()
 		else
 			local name = this:GetName() or ""
-			for i=1,table.getn(TrinketMenu.CheckOptInfo) do
+			for i=1,#TrinketMenu.CheckOptInfo do
 				if name=="TrinketMenu_Opt"..TrinketMenu.CheckOptInfo[i][1] and TrinketMenu.CheckOptInfo[i][3] then
 					TrinketMenu.OnTooltip(TrinketMenu.CheckOptInfo[i][3],TrinketMenu.CheckOptInfo[i][4])
 				end
 			end
-			for i=1,table.getn(TrinketMenu.TooltipInfo) do
+			for i=1,#TrinketMenu.TooltipInfo do
 				if TrinketMenu.TooltipInfo[i][1]==name and TrinketMenu.TooltipInfo[i][2] then
 					TrinketMenu.OnTooltip(TrinketMenu.TooltipInfo[i][2],TrinketMenu.TooltipInfo[i][3])
 				end

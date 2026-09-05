@@ -1,7 +1,7 @@
 # TrinketMenu
 
 [![Interface](https://img.shields.io/badge/Interface-1.12.1%20%28Build%205875%29-blue.svg)](https://github.com/Fostercare5988/TrinketMenu)
-[![Version](https://img.shields.io/badge/Version-3.8.0-brightgreen.svg)](https://github.com/Fostercare5988/TrinketMenu)
+[![Version](https://img.shields.io/badge/Version-3.9.0-brightgreen.svg)](https://github.com/Fostercare5988/TrinketMenu)
 [![Engine](https://img.shields.io/badge/Engine-ClassicAPI%20%7C%20SuperWoW%20%7C%20NamPower%20%7C%20UnitXP%20SP3%20%7C%20DXVK-orange.svg)](https://github.com/Fostercare5988/TrinketMenu)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -98,6 +98,12 @@ World of Warcraft 1.12.1/
 ---
 
 ## 7. Changelog
+
+### Version 3.9.0
+- **Engine Startup Guard Enforcement**: Upgraded engine dependency guards across all module files (`TrinketMenu.lua`, `TrinketMenuOpt.lua`, `TrinketMenuQueue.lua`) to strictly enforce `MIN_CLASSIC_API = 11304` (`v1.13.4+`) and `SUPERWOW_VERSION` (`v2.2+`).
+- **Modern Lua 5.1 Syntax**: Eradicated all 25 instances of legacy `table.getn(t)` in favor of the native `#` bytecode operator.
+- **Global Table Indexing**: Modernized `getglobal(...)` calls across options and queue modules to direct `_G[...]` table indexing.
+- **Table Recycling**: Replaced `table.setn(list, 0)` with native C++ `table.wipe` for instant garbage-free memory clearing during profile loading and queue sorting.
 
 ### Version 3.8.0 (Modern Engine Release)
 - **Engine Guard**: Added strict startup dependency check requiring ClassicAPI v1.13.4+ and SuperWoW v2.2+.

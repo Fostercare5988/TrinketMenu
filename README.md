@@ -64,7 +64,7 @@ Toggle, dock, lock, or scale your trinket bars using the `/trinket` or `/trinket
 ### Mandatory Prerequisites:
 This addon strictly requires the Enhanced 1.12.1 Client Extension Stack:
 
-1. [**ClassicAPI v1.13.4+**](https://github.com/brues-code/ClassicAPI) — Mandatory engine DLL.
+1. [**ClassicAPI v1.14.0+**](https://github.com/brues-code/ClassicAPI) — Mandatory engine DLL.
 2. [**SuperWoW v2.2+**](https://github.com/balakethelock/SuperWoW) — Mandatory engine DLL.
 3. [**NamPower v4.6.3+**](https://github.com/Emyrk/nampower) — Mandatory engine DLL.
 4. [**UnitXP SP3 v89+**](https://codeberg.org/konaka/UnitXP_SP3) — Mandatory engine DLL.
@@ -100,13 +100,13 @@ World of Warcraft 1.12.1/
 ## 7. Changelog
 
 ### Version 3.9.0
-- **Engine Startup Guard Enforcement**: Upgraded engine dependency guards across all module files (`TrinketMenu.lua`, `TrinketMenuOpt.lua`, `TrinketMenuQueue.lua`) to strictly enforce `MIN_CLASSIC_API = 11304` (`v1.13.4+`) and `SUPERWOW_VERSION` (`v2.2+`).
+- **Engine Startup Guard Enforcement**: Upgraded engine dependency guards across all module files (`TrinketMenu.lua`, `TrinketMenuOpt.lua`, `TrinketMenuQueue.lua`) to strictly enforce `MIN_CLASSIC_API = 11400` (`v1.14.0+`) and `SUPERWOW_VERSION` (`v2.2+`).
 - **Modern Lua 5.1 Syntax**: Eradicated all 25 instances of legacy `table.getn(t)` in favor of the native `#` bytecode operator.
 - **Global Table Indexing**: Modernized `getglobal(...)` calls across options and queue modules to direct `_G[...]` table indexing.
 - **Table Recycling**: Replaced `table.setn(list, 0)` with native C++ `table.wipe` for instant garbage-free memory clearing during profile loading and queue sorting.
 
 ### Version 3.8.0 (Modern Engine Release)
-- **Engine Guard**: Added strict startup dependency check requiring ClassicAPI v1.13.4+ and SuperWoW v2.2+.
+- **Engine Guard**: Added strict startup dependency check requiring ClassicAPI v1.14.0+ and SuperWoW v2.2+.
 - **Hardware Timers**: Replaced Lua `OnUpdate` polling frame with native C++ `C_Timer.After` and `C_Timer.NewTicker`.
 - **Secure Hooking**: Replaced global API function overrides with `hooksecurefunc("UseInventoryItem")` and `hooksecurefunc("UseAction")`.
 - **Tooltip Scanning Eradication**: Removed `TrinketMenu_TooltipScan` and replaced with direct item ID resolution.

@@ -56,6 +56,10 @@ Toggle, dock, lock, or scale your trinket bars using the `/trinket` or `/trinket
 - **Non-Destructive Secure Hooking**: Replaced destructive global function overrides (`UseAction = ...`, `UseInventoryItem = ...`) with native `hooksecurefunc`.
 - **Rule C8 Mouse Passthrough**: Applied `:EnableMouse(false)` across all 32 child cooldown frames (`TrinketMenu_TrinketXCooldown` and `TrinketMenu_MenuXCooldown`), completely preventing cooldown sweeps from intercepting player clicks.
 - **Pure English Standard (Rule H2)**: 100% clean English constants, eliminating legacy multi-locale string bloat.
+- **Suite Synergy (ItemRack & Bagnon)**:
+  - **ItemRack Queue Deference**: Automatically pauses the combat queue when ItemRack is performing a multi-piece set swap (`Rack.SetSwapping`), preventing item lock collisions when leaving combat.
+  - **Shared Non-Destructive Hooking**: Coordinates with ItemRack over native `hooksecurefunc("UseInventoryItem")` and `hooksecurefunc("UseAction")` pipelines.
+  - **Bagnon Bag Queue Display**: Staged combat swaps reflect directly inside Bagnon item tooltips (`TrinketMenu: Queued`).
 
 ---
 
@@ -98,6 +102,11 @@ World of Warcraft 1.12.1/
 ---
 
 ## 7. Changelog
+
+### Version 3.9.1 (Inventory Trio Synergy)
+- **Cooperative Swap Scheduling**: Yields combat queue processing while ItemRack is in mid-swap (`Rack.SetSwapping`), preventing simultaneous item pickups and deadlocks.
+- **Asynchronous Double-Queue Resolution**: Fixed simultaneous top + bottom trinket swapping via sequential `ITEM_LOCK_CHANGED` state machine and `C_Timer` watchdog.
+- **Bagnon Tooltip Coordination**: Exposed queued states for bag tooltip reflection in Bagnon.
 
 ### Version 3.9.0
 - **Engine Startup Guard Enforcement**: Upgraded engine dependency guards across all module files (`TrinketMenu.lua`, `TrinketMenuOpt.lua`, `TrinketMenuQueue.lua`) to strictly enforce `MIN_CLASSIC_API = 11400` (`v1.14.0+`) and `SUPERWOW_VERSION` (`v2.2+`).

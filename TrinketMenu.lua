@@ -977,6 +977,11 @@ function TrinketMenu.ProcessCombatQueue()
 		TrinketMenu.StartTimer("ProcessCombatQueue", 0.2)
 		return
 	end
+	-- Defer if ItemRack is actively swapping an equipment set
+	if Rack and Rack.SetSwapping then
+		TrinketMenu.StartTimer("ProcessCombatQueue", 0.25)
+		return
+	end
 
 	-- Check slot 0 (inventory slot 13)
 	if TrinketMenu.CombatQueue[0] then

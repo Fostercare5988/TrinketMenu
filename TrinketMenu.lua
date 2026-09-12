@@ -66,6 +66,66 @@ TrinketMenu.CombatQueue = {} -- [0] or [1] = name of trinket queued for slot 0 o
 TrinketMenu.Corners = { "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }
 TrinketMenu.WatchItem = {} -- table of items being watched for cooldowns
 
+-- Modern Rarity Borders
+local QUALITY_BORDER_BACKDROP = {
+	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+	tile = true,
+	tileSize = 8,
+	edgeSize = 12,
+	insets = { left = 0, right = 0, top = 0, bottom = 0 }
+}
+
+local ENHANCED_QUALITY_COLORS = {
+	[2] = { r = 0.05, g = 1.00, b = 0.15 }, -- Vibrant Emerald Green
+	[3] = { r = 0.00, g = 0.70, b = 1.00 }, -- Radiant Electric Sky Blue
+	[4] = { r = 0.85, g = 0.20, b = 1.00 }, -- Vivid Neon Purple / Magenta
+	[5] = { r = 1.00, g = 0.55, b = 0.00 }, -- Flaming Orange
+	[6] = { r = 0.95, g = 0.85, b = 0.40 }, -- Radiant Gold
+}
+
+local function GetBorderQualityColor(quality)
+	local color = ENHANCED_QUALITY_COLORS[quality]
+	if color then
+		return color.r, color.g, color.b
+	end
+	return GetItemQualityColor(quality)
+end
+
+local function get_or_create_quality_border(btn)
+	if not btn then return nil end
+	if not btn.qualityBorder then
+		local name = btn:GetName()
+		local qBorder = CreateFrame("Frame", name and (name .. "QualityBorder") or nil, btn)
+		qBorder:SetPoint("TOPLEFT", btn, "TOPLEFT", -2, 2)
+		qBorder:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 2, -2)
+		qBorder:SetBackdrop(QUALITY_BORDER_BACKDROP)
+		qBorder:EnableMouse(false)
+		if btn.GetFrameLevel then
+			qBorder:SetFrameLevel(btn:GetFrameLevel() + 1)
+		end
+		qBorder:Hide()
+		btn.qualityBorder = qBorder
+	end
+	return btn.qualityBorder
+end
+
+local function apply_trinket_quality_border(btn, quality)
+	if not btn then return end
+	local qBorder = get_or_create_quality_border(btn)
+	if not qBorder then return end
+
+	if type(quality) == "number" and quality > 1 then
+		local r, g, b = GetBorderQualityColor(quality)
+		qBorder:SetBackdropBorderColor(r, g, b, 1.0)
+		if btn.GetFrameLevel then
+			qBorder:SetFrameLevel(btn:GetFrameLevel() + 1)
+		end
+		qBorder:Show()
+	else
+		qBorder:Hide()
+	end
+end
+
 --[[ Local functions ]]--
 
 -- dock-dependant offset and directions: MainDock..MenuDock
@@ -148,7 +208,7 @@ function TrinketMenu.BuildMenu()
 			
 			if itemLink then
 				_,_,itemID,itemName = string.find(GetContainerItemLink(i,j) or "","item:(%d+).+%[(.+)%]")
-				_,_,_,_,_,_,_,equipSlot,itemTexture = GetItemInfo(itemID or "")
+				local _,_,quality,_,_,_,_,equipSlot,itemTexture = GetItemInfo(itemID or "")
 				if equipSlot=="INVTYPE_TRINKET" then
 					if not TrinketMenu.BaggedTrinkets[idx] then
 						TrinketMenu.BaggedTrinkets[idx] = {}
@@ -157,6 +217,7 @@ function TrinketMenu.BuildMenu()
 					TrinketMenu.BaggedTrinkets[idx].slot = j
 					TrinketMenu.BaggedTrinkets[idx].name = itemName
 					TrinketMenu.BaggedTrinkets[idx].texture = itemTexture
+					TrinketMenu.BaggedTrinkets[idx].quality = quality
 					idx = idx + 1
 				end
 			end
@@ -188,6 +249,7 @@ function TrinketMenu.BuildMenu()
 		for i=1,TrinketMenu.NumberOfTrinkets do
 			local item = getglobal("TrinketMenu_Menu"..i)
 			getglobal("TrinketMenu_Menu"..i.."Icon"):SetTexture(TrinketMenu.BaggedTrinkets[i].texture)
+			apply_trinket_quality_border(item, TrinketMenu.BaggedTrinkets[i].quality)
 			item:SetPoint("TOPLEFT","TrinketMenu_MenuFrame",TrinketMenuPerOptions.MenuDock,xpos,ypos)
 
 			if TrinketMenuPerOptions.MenuOrient=="VERTICAL" then
@@ -213,7 +275,13 @@ function TrinketMenu.BuildMenu()
 			end
 		end
 		for i=(TrinketMenu.NumberOfTrinkets+1),TrinketMenu.MaxTrinkets do
-			getglobal("TrinketMenu_Menu"..i):Hide()
+			local mBtn = getglobal("TrinketMenu_Menu"..i)
+			if mBtn then
+				mBtn:Hide()
+				if mBtn.qualityBorder then
+					mBtn.qualityBorder:Hide()
+				end
+			end
 		end
 		if col==0 then
 			row = row-1
@@ -420,6 +488,21 @@ function TrinketMenu.UpdateWornTrinkets()
 	TrinketMenu_Trinket0:SetChecked(0)
 	TrinketMenu_Trinket1Icon:SetDesaturated(0)
 	TrinketMenu_Trinket1:SetChecked(0)
+
+	local q0 = GetInventoryItemQuality("player", 13)
+	if not q0 then
+		local l0 = GetInventoryItemLink("player", 13)
+		if l0 then local _, _, q = GetItemInfo(l0); q0 = q end
+	end
+	apply_trinket_quality_border(TrinketMenu_Trinket0, q0)
+
+	local q1 = GetInventoryItemQuality("player", 14)
+	if not q1 then
+		local l1 = GetInventoryItemLink("player", 14)
+		if l1 then local _, _, q = GetItemInfo(l1); q1 = q end
+	end
+	apply_trinket_quality_border(TrinketMenu_Trinket1, q1)
+
 	TrinketMenu.UpdateWornCooldowns()
 	local name
 	for i=13,14 do

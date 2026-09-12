@@ -4,10 +4,10 @@
 		<Size>
 			<AbsDimension x="16" y="16"/>
 		</Size>
-		<NormalTexture file="Interface\AddOns\TrinketMenu\Buttons">
+		<NormalTexture file="Interface\AddOns\TrinketMenu\Buttons" setAllPoints="true">
 			<TexCoords left=".75" right=".875" top="0" bottom=".125"/>
 		</NormalTexture>
-		<HighlightTexture file="Interface\AddOns\TrinketMenu\Buttons" alphaMode="ADD">
+		<HighlightTexture file="Interface\AddOns\TrinketMenu\Buttons" alphaMode="ADD" setAllPoints="true">
 			<TexCoords left=".75" right=".875" top="0" bottom=".125"/>
 		</HighlightTexture>
 		<Scripts>

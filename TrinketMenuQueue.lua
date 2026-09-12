@@ -53,6 +53,12 @@ end
 function TrinketMenu.GetID(bag,slot)
 	local id
 	if slot then
+		if type(C_Container) == "table" and type(C_Container.GetContainerItemID) == "function" then
+			local cid = C_Container.GetContainerItemID(bag, slot)
+			if cid and cid > 0 then
+				return tostring(cid)
+			end
+		end
 		_,_,id = string.find(GetContainerItemLink(bag,slot) or "","item:(%d+)")
 	else
 		_,_,id = string.find(GetInventoryItemLink("player",bag) or "","item:(%d+)")

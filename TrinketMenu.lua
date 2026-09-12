@@ -204,12 +204,21 @@ function TrinketMenu.BuildMenu()
 	-- go through bags and gather trinkets into .BaggedTrinkets
 	for i=0,4 do
 		for j=1,GetContainerNumSlots(i) do
-			itemLink = GetContainerItemLink(i,j)
-			
-			if itemLink then
-				_,_,itemID,itemName = string.find(GetContainerItemLink(i,j) or "","item:(%d+).+%[(.+)%]")
-				local _,_,quality,_,_,_,_,equipSlot,itemTexture = GetItemInfo(itemID or "")
-				if equipSlot=="INVTYPE_TRINKET" then
+			local itemID
+			if type(C_Container) == "table" and type(C_Container.GetContainerItemID) == "function" then
+				itemID = C_Container.GetContainerItemID(i, j)
+			end
+			if not itemID then
+				local itemLink = GetContainerItemLink(i, j)
+				if itemLink then
+					local _, _, lid = string.find(itemLink, "item:(%d+)")
+					itemID = tonumber(lid)
+				end
+			end
+
+			if itemID and itemID > 0 then
+				local itemName, _, quality, _, _, _, _, equipSlot, itemTexture = GetItemInfo(itemID)
+				if equipSlot == "INVTYPE_TRINKET" then
 					if not TrinketMenu.BaggedTrinkets[idx] then
 						TrinketMenu.BaggedTrinkets[idx] = {}
 					end
@@ -218,6 +227,7 @@ function TrinketMenu.BuildMenu()
 					TrinketMenu.BaggedTrinkets[idx].name = itemName
 					TrinketMenu.BaggedTrinkets[idx].texture = itemTexture
 					TrinketMenu.BaggedTrinkets[idx].quality = quality
+					TrinketMenu.BaggedTrinkets[idx].id = itemID
 					idx = idx + 1
 				end
 			end
@@ -419,17 +429,30 @@ function TrinketMenu.ItemInfo(slot)
 end
 
 function TrinketMenu.FindItem(name,includeInventory)
+	if not name then return end
 	if includeInventory then
 		for i=13,14 do
-			if string.find(GetInventoryItemLink("player",i) or "",name,1,1) then
+			local link = GetInventoryItemLink("player",i)
+			if link and string.find(link,name,1,1) then
 				return i
 			end
 		end
 	end
 	for i=0,4 do
 		for j=1,GetContainerNumSlots(i) do
-			if string.find(GetContainerItemLink(i,j) or "",name,1,1) then
-				return nil,i,j
+			if type(C_Container) == "table" and type(C_Container.GetContainerItemID) == "function" then
+				local id = C_Container.GetContainerItemID(i, j)
+				if id and id > 0 then
+					local iname = GetItemInfo(id)
+					if iname == name then
+						return nil, i, j
+					end
+				end
+			else
+				local link = GetContainerItemLink(i, j)
+				if link and string.find(link, name, 1, 1) then
+					return nil, i, j
+				end
 			end
 		end
 	end

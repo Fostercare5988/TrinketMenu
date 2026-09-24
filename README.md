@@ -57,9 +57,9 @@ Toggle, dock, lock, or scale your trinket bars using the `/trinket` or `/trinket
 - **Rule C8 Mouse Passthrough**: Applied `:EnableMouse(false)` across all 32 child cooldown frames (`TrinketMenu_TrinketXCooldown` and `TrinketMenu_MenuXCooldown`), completely preventing cooldown sweeps from intercepting player clicks.
 - **Pure English Standard (Rule H2)**: 100% clean English constants, eliminating legacy multi-locale string bloat.
 - **Suite Synergy (ItemRack & Bagnon)**:
-  - **ItemRack Queue Deference**: Automatically pauses the combat queue when ItemRack is performing a multi-piece set swap (`Rack.SetSwapping`), preventing item lock collisions when leaving combat.
+  - **ItemRack Queue Deference**: Uses the optional `Rack.IsEquipmentSwapActive()` query before issuing a trinket move. Queued intent completes only when the requested trinket is observed in the slot.
   - **Shared Non-Destructive Hooking**: Coordinates with ItemRack over native `hooksecurefunc("UseInventoryItem")` and `hooksecurefunc("UseAction")` pipelines.
-  - **Bagnon Bag Queue Display**: Staged combat swaps reflect directly inside Bagnon item tooltips (`TrinketMenu: Queued`).
+  - **Bagnon Bag Queue Display**: `TrinketMenu.GetQueuedSlotForItem(link)` exposes read-only queue status for Bagnon tooltips.
 
 ---
 

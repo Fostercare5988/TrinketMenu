@@ -63,6 +63,8 @@ TrinketMenu.MaxTrinkets = 30 -- add more to TrinketMenu_MenuFrame if this change
 TrinketMenu.BaggedTrinkets = {} -- indexed by number, 1-30 of trinkets in the menu
 TrinketMenu.NumberOfTrinkets = 0 -- number of trinkets in the menu
 TrinketMenu.CombatQueue = {} -- [0] or [1] = name of trinket queued for slot 0 or 1
+TrinketMenu.PendingSwap = {} -- runtime attempts awaiting observed equipment
+TrinketMenu.SwapAttempts = {} -- bounded retries for rejected moves
 TrinketMenu.Corners = { "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }
 TrinketMenu.WatchItem = {} -- table of items being watched for cooldowns
 
@@ -478,15 +480,21 @@ function TrinketMenu.OnEvent()
 		TrinketMenu.StartTimer("UpdateBaggedTrinkets")
 	elseif event=="UNIT_INVENTORY_CHANGED" and arg1=="player" then
 		TrinketMenu.UpdateWornTrinkets()
+		if TrinketMenu.CombatQueue[0] or TrinketMenu.CombatQueue[1]
+			or TrinketMenu.PendingSwap[0] or TrinketMenu.PendingSwap[1] then
+			TrinketMenu.ProcessCombatQueue()
+		end
 	elseif event=="ACTIONBAR_UPDATE_COOLDOWN" then
 		TrinketMenu.UpdateWornCooldowns(1)
 	elseif (event=="PLAYER_REGEN_ENABLED" or event=="PLAYER_UNGHOST" or event=="PLAYER_ALIVE") and not TrinketMenu.IsPlayerReallyDead() then
 		-- trinkets can now be swapped after combat/death
-		if TrinketMenu.CombatQueue and (TrinketMenu.CombatQueue[0] or TrinketMenu.CombatQueue[1]) then
+		if TrinketMenu.CombatQueue[0] or TrinketMenu.CombatQueue[1]
+			or TrinketMenu.PendingSwap[0] or TrinketMenu.PendingSwap[1] then
 			TrinketMenu.ProcessCombatQueue()
 		end
 	elseif event=="ITEM_LOCK_CHANGED" then
-		if TrinketMenu.CombatQueue and (TrinketMenu.CombatQueue[0] or TrinketMenu.CombatQueue[1]) then
+		if TrinketMenu.CombatQueue[0] or TrinketMenu.CombatQueue[1]
+			or TrinketMenu.PendingSwap[0] or TrinketMenu.PendingSwap[1] then
 			TrinketMenu.ProcessCombatQueue()
 		end
 	elseif event=="UPDATE_BINDINGS" then
@@ -1040,116 +1048,122 @@ end
 
 --[[ Combat Queue ]]
 
+-- Optional read-only integration for tooltip addons. The queue stays owned here.
+function TrinketMenu.GetQueuedSlotForItem(link)
+	local _, _, name = string.find(link or "", "%[(.+)%]")
+	if not name then return nil end
+	if TrinketMenu.CombatQueue[0] == name then return 13 end
+	if TrinketMenu.CombatQueue[1] == name then return 14 end
+end
+
 function TrinketMenu.EquipTrinketByName(name,slot)
 	if not name then return end
-	if UnitAffectingCombat("player") or TrinketMenu.IsPlayerReallyDead() then
-		-- queue trinket
-		local queue = TrinketMenu.CombatQueue
-		local which = slot-13 -- 0 or 1
-		if queue[which]==name and not imperative then
-			queue[which] = nil
-		elseif queue[1-which]==name then
+	local which = slot-13
+	if which~=0 and which~=1 then return end
+	local queue = TrinketMenu.CombatQueue
+	if queue[which]==name then
+		queue[which] = nil -- a second selection cancels this slot's intent
+		TrinketMenu.SwapAttempts[which] = nil
+	else
+		if queue[1-which]==name then
 			queue[1-which] = nil
-			queue[which] = name
-		else
-			queue[which] = name
+			TrinketMenu.SwapAttempts[1-which] = nil
 		end
-	elseif not CursorHasItem() and not SpellIsTargeting() then
-		local _,b,s = TrinketMenu.FindItem(name)
-		if b then
-			local _,_,isLocked = GetContainerItemInfo(b,s)
-			if not isLocked and not IsInventoryItemLocked(slot) then
-				-- neither container item nor inventory item locked, perform swap
-				PickupContainerItem(b,s)
-				PickupInventoryItem(slot)
-				TrinketMenu.CombatQueue[slot-13] = nil
-				getglobal("TrinketMenu_Trinket"..(slot-13).."Icon"):SetDesaturated(1)
-				TrinketMenu.StartTimer("UpdateWornTrinkets") -- in case it's not equipped (stunned, etc)
-			end
-		end
+		queue[which] = name -- latest selection for this slot wins
+		TrinketMenu.SwapAttempts[which] = nil
 	end
 	TrinketMenu.UpdateCombatQueue()
+	TrinketMenu.ProcessCombatQueue()
 end	
 
 function TrinketMenu.ProcessCombatQueue()
+	if TrinketMenu.IssuingSwap then return end
 	if UnitAffectingCombat("player") or TrinketMenu.IsPlayerReallyDead() then
 		return
 	end
-	if not TrinketMenu.CombatQueue or (not TrinketMenu.CombatQueue[0] and not TrinketMenu.CombatQueue[1]) then
+	local queue = TrinketMenu.CombatQueue
+	if not queue[0] and not queue[1] then
+		for which=0,1 do
+			local pending = TrinketMenu.PendingSwap[which]
+			if pending then
+				local link = GetInventoryItemLink("player", 13+which)
+				if (link and string.find(link, "["..pending.name.."]", 1, true)) or GetTime()>=pending.deadline then
+					TrinketMenu.PendingSwap[which] = nil
+				else
+					TrinketMenu.StartTimer("ProcessCombatQueue", 0.25)
+					return
+				end
+			end
+		end
 		TrinketMenu.StopTimer("ProcessCombatQueue")
 		return
 	end
-	if CursorHasItem() or SpellIsTargeting() then
-		TrinketMenu.StartTimer("ProcessCombatQueue", 0.2)
-		return
-	end
-	-- Defer if ItemRack is actively swapping an equipment set
-	if Rack and Rack.SetSwapping then
+	-- ItemRack exposes only its transaction state; its queue stays private.
+	if (Rack and Rack.IsEquipmentSwapActive and Rack.IsEquipmentSwapActive())
+		or CursorHasItem() or SpellIsTargeting() then
 		TrinketMenu.StartTimer("ProcessCombatQueue", 0.25)
 		return
 	end
-
-	-- Check slot 0 (inventory slot 13)
-	if TrinketMenu.CombatQueue[0] then
-		local name0 = TrinketMenu.CombatQueue[0]
-		local link0 = GetInventoryItemLink("player", 13)
-		if link0 and string.find(link0, "["..name0.."]", 1, true) then
-			TrinketMenu.CombatQueue[0] = nil
-			TrinketMenu.UpdateCombatQueue()
-		else
-			local _, b0, s0 = TrinketMenu.FindItem(name0)
-			if b0 then
-				local _, _, isLocked0 = GetContainerItemInfo(b0, s0)
-				if isLocked0 or IsInventoryItemLocked(13) then
-					TrinketMenu.StartTimer("ProcessCombatQueue", 0.2)
-					return
+	for which=0,1 do
+		local pending = TrinketMenu.PendingSwap[which]
+		if pending then
+			local link = GetInventoryItemLink("player", 13+which)
+			if (link and string.find(link, "["..pending.name.."]", 1, true)) or GetTime()>=pending.deadline then
+				TrinketMenu.PendingSwap[which] = nil
+			else
+				TrinketMenu.StartTimer("ProcessCombatQueue", 0.25)
+				return
+			end
+		end
+	end
+	for which=0,1 do
+		local name = queue[which]
+		if name then
+			local slot = 13+which
+			local link = GetInventoryItemLink("player", slot)
+			if link and string.find(link, "["..name.."]", 1, true) then
+				queue[which] = nil -- complete only after equipment is observed
+				TrinketMenu.PendingSwap[which] = nil
+				TrinketMenu.SwapAttempts[which] = nil
+				TrinketMenu.UpdateCombatQueue()
+			else
+				local _, bag, bagSlot = TrinketMenu.FindItem(name)
+				if not bag then
+					queue[which] = nil -- removed item or cancelled move
+					TrinketMenu.SwapAttempts[which] = nil
+					TrinketMenu.UpdateCombatQueue()
 				else
-					PickupContainerItem(b0, s0)
-					PickupInventoryItem(13)
-					TrinketMenu_Trinket0Icon:SetDesaturated(1)
+					local _, _, locked = GetContainerItemInfo(bag, bagSlot)
+					if locked or IsInventoryItemLocked(slot) then
+						TrinketMenu.StartTimer("ProcessCombatQueue", 0.25)
+						return
+					end
+					if (TrinketMenu.SwapAttempts[which] or 0)>=3 then
+						queue[which] = nil -- the client did not confirm the requested move
+						TrinketMenu.SwapAttempts[which] = nil
+						TrinketMenu.UpdateCombatQueue()
+						return
+					end
+					TrinketMenu.SwapAttempts[which] = (TrinketMenu.SwapAttempts[which] or 0)+1
+					TrinketMenu.PendingSwap[which] = { name=name, deadline=GetTime()+2 }
+					TrinketMenu.IssuingSwap = true
+					PickupContainerItem(bag, bagSlot)
+					PickupInventoryItem(slot)
+					TrinketMenu.IssuingSwap = nil
+					if CursorHasItem() then
+						ClearCursor()
+						TrinketMenu.PendingSwap[which] = nil
+					end
+					getglobal("TrinketMenu_Trinket"..which.."Icon"):SetDesaturated(1)
 					TrinketMenu.StartTimer("UpdateWornTrinkets")
 					TrinketMenu.StartTimer("ProcessCombatQueue", 0.25)
 					return
 				end
-			else
-				TrinketMenu.CombatQueue[0] = nil
-				TrinketMenu.UpdateCombatQueue()
 			end
 		end
 	end
-
-	-- If slot 0 is handled, check slot 1 (inventory slot 14)
-	if TrinketMenu.CombatQueue[1] then
-		local name1 = TrinketMenu.CombatQueue[1]
-		local link1 = GetInventoryItemLink("player", 14)
-		if link1 and string.find(link1, "["..name1.."]", 1, true) then
-			TrinketMenu.CombatQueue[1] = nil
-			TrinketMenu.UpdateCombatQueue()
-		else
-			local _, b1, s1 = TrinketMenu.FindItem(name1)
-			if b1 then
-				local _, _, isLocked1 = GetContainerItemInfo(b1, s1)
-				if isLocked1 or IsInventoryItemLocked(14) then
-					TrinketMenu.StartTimer("ProcessCombatQueue", 0.2)
-					return
-				else
-					PickupContainerItem(b1, s1)
-					PickupInventoryItem(14)
-					TrinketMenu_Trinket1Icon:SetDesaturated(1)
-					TrinketMenu.StartTimer("UpdateWornTrinkets")
-					TrinketMenu.StartTimer("ProcessCombatQueue", 0.25)
-					return
-				end
-			else
-				TrinketMenu.CombatQueue[1] = nil
-				TrinketMenu.UpdateCombatQueue()
-			end
-		end
-	end
-
-	if not TrinketMenu.CombatQueue[0] and not TrinketMenu.CombatQueue[1] then
+	if not queue[0] and not queue[1] then
 		TrinketMenu.StopTimer("ProcessCombatQueue")
-		TrinketMenu.UpdateCombatQueue()
 	end
 end	
 

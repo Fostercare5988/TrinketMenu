@@ -337,6 +337,8 @@ end
 
 -- which = 0 or 1, decides if a trinket should be equipped and equips if so
 function TrinketMenu.ProcessAutoQueue(which)
+	if (Rack and Rack.IsEquipmentSwapActive and Rack.IsEquipmentSwapActive())
+		or TrinketMenu.PendingSwap[which] then return end
 
 	local start,duration,enable = GetInventoryItemCooldown("player",13+which)
 	local _,_,id,name = string.find(GetInventoryItemLink("player",13+which) or "","item:(%d+).+%[(.+)%]")

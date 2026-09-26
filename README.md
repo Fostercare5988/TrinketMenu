@@ -2,10 +2,10 @@
 
 [![Interface](https://img.shields.io/badge/Interface-1.12.1%20%28Build%205875%29-blue.svg)](https://github.com/Fostercare5988/TrinketMenu)
 [![Version](https://img.shields.io/badge/Version-3.9.0-brightgreen.svg)](https://github.com/Fostercare5988/TrinketMenu)
-[![Engine](https://img.shields.io/badge/Engine-ClassicAPI%20%7C%20SuperWoW%20%7C%20NamPower%20%7C%20UnitXP%20SP3%20%7C%20DXVK-orange.svg)](https://github.com/Fostercare5988/TrinketMenu)
+[![Engine](https://img.shields.io/badge/Engine-ClassicAPI%20%7C%20SuperWoW-orange.svg)](https://github.com/Fostercare5988/TrinketMenu)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-An ultra-responsive, zero-latency trinket management and auto-swapping suite engineered natively for the **Enhanced World of Warcraft 1.12.1 Client Engine Stack**.
+A trinket management and auto-swapping suite engineered natively for the **Enhanced World of Warcraft 1.12.1 Client Engine Stack**.
 
 ---
 
@@ -49,7 +49,7 @@ Toggle, dock, lock, or scale your trinket bars using the `/trinket` or `/trinket
 
 ---
 
-## 4. Technical Architecture & Zero-Bloat Optimizations
+## 4. Technical Architecture & Implementation Details
 
 - **Native Hardware Timers (`C_Timer`)**: Eradicated the legacy 2006 Lua `TrinketMenu_TimersFrame` `OnUpdate` polling loop. All delayed updates and tickers now run directly in C++ via `C_Timer.After` and `C_Timer.NewTicker`.
 - **Zero Tooltip Scraping**: Eliminated `TrinketMenu_TooltipScan` and GameTooltip parsing. Action bar trinket activations are resolved via `GetActionInfo` and direct Item ID comparisons.
@@ -68,12 +68,8 @@ Toggle, dock, lock, or scale your trinket bars using the `/trinket` or `/trinket
 ### Mandatory Prerequisites:
 This addon strictly requires the Enhanced 1.12.1 Client Extension Stack:
 
-1. [**ClassicAPI v1.14.0+**](https://github.com/brues-code/ClassicAPI) — Mandatory engine DLL.
+1. [**ClassicAPI v1.15.14+**](https://github.com/brues-code/ClassicAPI) — Mandatory engine DLL.
 2. [**SuperWoW v2.2+**](https://github.com/balakethelock/SuperWoW) — Mandatory engine DLL.
-3. [**NamPower v4.6.3+**](https://github.com/Emyrk/nampower) — Mandatory engine DLL.
-4. [**UnitXP SP3 v89+**](https://codeberg.org/konaka/UnitXP_SP3) — Mandatory engine DLL.
-5. [**DXVK**](https://github.com/doitsujin/dxvk) — Vulkan frame pacing translation layer.
-6. [**VanillaFixes**](https://github.com/hannesmann/vanillafixes) — Modern OS framerate uncap.
 
 ### Installation Path:
 Extract or clone into your World of Warcraft directory:

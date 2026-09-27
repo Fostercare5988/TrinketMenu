@@ -1,11 +1,11 @@
 
--- Strict Engine Dependency Guard (Mandatory ClassicAPI v1.15.14+ & SuperWoW v2.2+)
-local MIN_CLASSIC_API = 11514
+-- Strict Engine Dependency Guard (Mandatory ClassicAPI v1.15.15+ & SuperWoW v2.2+)
+local MIN_CLASSIC_API = 11515
 
-if not (CLASSIC_API_VERSION and SUPERWOW_VERSION) or 
-   (type(CLASSIC_API_VERSION) == "number" and CLASSIC_API_VERSION < MIN_CLASSIC_API) then
+if type(CLASSIC_API_VERSION) ~= "number" or not SUPERWOW_VERSION or
+   CLASSIC_API_VERSION < MIN_CLASSIC_API then
 	if DEFAULT_CHAT_FRAME then
-		DEFAULT_CHAT_FRAME:AddMessage("|cffff2020[Fatal Error]|r TrinketMenu requires ClassicAPI (v1.15.14+) & SuperWoW (v2.2+)! Please ensure both DLLs are loaded.", 1, 0.2, 0.2)
+		DEFAULT_CHAT_FRAME:AddMessage("|cffff2020[Fatal Error]|r TrinketMenu requires ClassicAPI (v1.15.15+) & SuperWoW (v2.2+)! Please ensure both DLLs are loaded.", 1, 0.2, 0.2)
 	end
 	return
 end
@@ -677,10 +677,13 @@ function TrinketMenu.StartTimer(name,delay)
 	if timerData.rep then
 		TrinketMenu.ActiveTimers[name] = C_Timer.NewTicker(tDelay, timerData.func)
 	else
-		TrinketMenu.ActiveTimers[name] = C_Timer.After(tDelay, function()
+		local handle
+		handle = C_Timer.NewTimer(tDelay, function()
+			if TrinketMenu.ActiveTimers[name] ~= handle then return end
 			TrinketMenu.ActiveTimers[name] = nil
 			timerData.func()
 		end)
+		TrinketMenu.ActiveTimers[name] = handle
 	end
 end
 

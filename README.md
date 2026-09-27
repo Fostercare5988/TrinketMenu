@@ -1,6 +1,6 @@
 # TrinketMenu
 
-Recommended ClassicAPI version: **v1.15.15+**. The existing enforced addon minimum remains unchanged because this update introduces no required new API calls. Native equipment-set action buttons require v1.15.15; after updating the DLL, fully restart the game client.
+Required ClassicAPI version: **v1.15.15+**. This is the maintainer's published support baseline for this addon suite; it is not a claim that every API used here was introduced in v1.15.15. After replacing ClassicAPI.dll, fully restart WoW; `/reload` cannot reload a DLL.
 
 [![Interface](https://img.shields.io/badge/Interface-1.12.1%20%28Build%205875%29-blue.svg)](https://github.com/Fostercare5988/TrinketMenu)
 [![Version](https://img.shields.io/badge/Version-3.9.0-brightgreen.svg)](https://github.com/Fostercare5988/TrinketMenu)
@@ -70,7 +70,7 @@ Toggle, dock, lock, or scale your trinket bars using the `/trinket` or `/trinket
 ### Mandatory Prerequisites:
 This addon strictly requires the Enhanced 1.12.1 Client Extension Stack:
 
-1. [**ClassicAPI v1.15.14+**](https://github.com/brues-code/ClassicAPI) — Mandatory engine DLL.
+1. [**ClassicAPI v1.15.15+**](https://github.com/brues-code/ClassicAPI) — Mandatory engine DLL.
 2. [**SuperWoW v2.2+**](https://github.com/balakethelock/SuperWoW) — Mandatory engine DLL.
 
 ### Installation Path:
@@ -120,4 +120,13 @@ World of Warcraft 1.12.1/
 - **Rule C8 Mouse Passthrough**: Enforced `:EnableMouse(false)` on all child cooldown frames to eliminate click dead zones.
 - **Rule H5 Compliance**: Added full standard Markdown documentation and cleaned `.toc` metadata.
 
-ClassicAPI v1.15.15 compatibility: action type "equipmentset" is excluded from equipped-item/reagent-use tracking. Existing addon dependency minimums remain unchanged; no native-set import or duplicate WEAR_EQUIPMENT_SET handler is added. Verify normal spell/item actions and a ClassicAPI equipment-set action in-game after updating the DLL and restarting WoW.
+ClassicAPI v1.15.15 compatibility: action type "equipmentset" is excluded from equipped-item/reagent-use tracking. The published support minimum is v1.15.15+; no native-set import or duplicate WEAR_EQUIPMENT_SET handler is added. Verify normal spell/item actions and a ClassicAPI equipment-set action in-game after updating the DLL and restarting WoW.
+
+
+### Timer ownership
+
+One-shot refresh/queue timers use cancellable `C_Timer.NewTimer` handles. Stopping
+or replacing a timer prevents its old callback from running or clearing a newer
+request. Repeating timers keep their existing ticker behavior. Run
+`python -B tests/test_timers.py <directory-containing-lupa>` for cancellation and
+callback-rescheduling regressions; trinket swaps still need in-game verification.

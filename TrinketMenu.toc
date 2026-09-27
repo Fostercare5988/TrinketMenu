@@ -1,8 +1,9 @@
 ## Interface: 11200
+## X-ClassicAPI-Min-Version: 1.15.15
 ## Title: TrinketMenu
 ## Author: Gello, Fostercare5988
 ## Version: 3.9.0
-## Notes: AddOn to manage trinkets engineered natively for World of Warcraft 1.12.1 (ClassicAPI v1.15.14+, SuperWoW v2.2+).
+## Notes: AddOn to manage trinkets engineered natively for World of Warcraft 1.12.1 (ClassicAPI v1.15.15+, SuperWoW v2.2+).
 ## SavedVariables: TrinketMenuOptions
 ## SavedVariablesPerCharacter: TrinketMenuPerOptions, TrinketMenuQueue
 TrinketMenu.lua

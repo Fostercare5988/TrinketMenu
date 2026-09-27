@@ -1,8 +1,8 @@
--- Strict Engine Dependency Guard (Mandatory ClassicAPI v1.15.14+ & SuperWoW v2.2+)
-local MIN_CLASSIC_API = 11514
+-- Strict Engine Dependency Guard (Mandatory ClassicAPI v1.15.15+ & SuperWoW v2.2+)
+local MIN_CLASSIC_API = 11515
 
-if not (CLASSIC_API_VERSION and SUPERWOW_VERSION) or 
-   (type(CLASSIC_API_VERSION) == "number" and CLASSIC_API_VERSION < MIN_CLASSIC_API) then
+if type(CLASSIC_API_VERSION) ~= "number" or not SUPERWOW_VERSION or
+   CLASSIC_API_VERSION < MIN_CLASSIC_API then
 	return
 end
 

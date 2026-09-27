@@ -1,5 +1,7 @@
 # TrinketMenu
 
+Recommended ClassicAPI version: **v1.15.15+**. The existing enforced addon minimum remains unchanged because this update introduces no required new API calls. Native equipment-set action buttons require v1.15.15; after updating the DLL, fully restart the game client.
+
 [![Interface](https://img.shields.io/badge/Interface-1.12.1%20%28Build%205875%29-blue.svg)](https://github.com/Fostercare5988/TrinketMenu)
 [![Version](https://img.shields.io/badge/Version-3.9.0-brightgreen.svg)](https://github.com/Fostercare5988/TrinketMenu)
 [![Engine](https://img.shields.io/badge/Engine-ClassicAPI%20%7C%20SuperWoW-orange.svg)](https://github.com/Fostercare5988/TrinketMenu)
@@ -117,3 +119,5 @@ World of Warcraft 1.12.1/
 - **Tooltip Scanning Eradication**: Removed `TrinketMenu_TooltipScan` and replaced with direct item ID resolution.
 - **Rule C8 Mouse Passthrough**: Enforced `:EnableMouse(false)` on all child cooldown frames to eliminate click dead zones.
 - **Rule H5 Compliance**: Added full standard Markdown documentation and cleaned `.toc` metadata.
+
+ClassicAPI v1.15.15 compatibility: action type "equipmentset" is excluded from equipped-item/reagent-use tracking. Existing addon dependency minimums remain unchanged; no native-set import or duplicate WEAR_EQUIPMENT_SET handler is added. Verify normal spell/item actions and a ClassicAPI equipment-set action in-game after updating the DLL and restarting WoW.

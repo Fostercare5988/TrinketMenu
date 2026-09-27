@@ -361,6 +361,8 @@ function TrinketMenu.Initialize()
 	end)
 
 	hooksecurefunc("UseAction", function(slot,cursor,self)
+        -- A set may use a trinket icon, but clicking it does not use that trinket.
+        if GetActionInfo(slot) == "equipmentset" then return end
 		if IsEquippedAction(slot) then
 			local actionType, actionID = GetActionInfo(slot)
 			local link13 = GetInventoryItemLink("player", 13)

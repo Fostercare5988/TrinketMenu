@@ -1,151 +1,62 @@
 # TrinketMenu
 
-Required ClassicAPI version: **v1.15.15+**. This is the maintainer's published support baseline for this addon suite; it is not a claim that every API used here was introduced in v1.15.15. After replacing ClassicAPI.dll, fully restart WoW; `/reload` cannot reload a DLL.
+A trinket management, flyout drawer, and auto-swapping add-on for World of Warcraft 1.12.1.
 
-[![Interface](https://img.shields.io/badge/Interface-1.12.1%20%28Build%205875%29-blue.svg)](https://github.com/Fostercare5988/TrinketMenu)
-[![Version](https://img.shields.io/badge/Version-3.9.0-brightgreen.svg)](https://github.com/Fostercare5988/TrinketMenu)
-[![Engine](https://img.shields.io/badge/Engine-ClassicAPI%20%7C%20SuperWoW-orange.svg)](https://github.com/Fostercare5988/TrinketMenu)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+## Features
 
-A trinket management and auto-swapping suite engineered natively for the **Enhanced World of Warcraft 1.12.1 Client Engine Stack**.
+- **Equipped Trinket HUD**: Clean on-screen buttons displaying your currently equipped trinkets, their cooldown spirals, and readiness states.
+- **Flyout Trinket Drawer**: Hover or right-click to open a configurable grid drawer displaying all trinkets carried in your bags for fast one-click swapping.
+- **Intelligent Auto-Queue**: Automatically swaps trinkets according to a customizable priority list when an active trinket is on cooldown.
+- **Combat Delay & Queueing**: Swaps triggered during combat or death are queued and execute automatically as soon as combat ends.
+- **Flexible Docking & Scaling**: Dock the drawer to any side of the main bar or position it independently, with granular scale controls.
+- **Suite Synergy**: Cooperates seamlessly with ItemRack to prevent simultaneous inventory moves, and reflects queued trinkets on Bagnon item tooltips.
 
----
+## Requirements
 
-## 1. Description
+- **World of Warcraft 1.12.1** (Build 5875)
+- [ClassicAPI v1.15.15+](https://github.com/brues-code/ClassicAPI) (`ClassicAPI.dll`)
+- [SuperWoW v2.2+](https://github.com/balakethelock/SuperWoW) (`SuperWoWhook.dll` / `SuperWoWlauncher.exe`)
 
-**TrinketMenu** provides an intuitive, docked or floating on-screen bar displaying your currently equipped trinkets along with a flyout drawer of all trinkets carried in your bags.
+> Note: Completely restart the game client after installing or updating DLLs. `/reload` cannot reload DLLs.
 
-Delayed work uses cancellable **`C_Timer.NewTimer`** handles and repeating jobs use **`C_Timer.NewTicker`**. Item-use observers use **`hooksecurefunc`**. Queued equipment requests retain item IDs and complete only when the requested ID is observed in the destination slot.
+## Installation
 
----
+1. Copy or clone this repository into your WoW add-on directory:
+   ```text
+   World of Warcraft/Interface/AddOns/TrinketMenu/
+   ```
+2. Verify that `TrinketMenu.toc` is located directly at `Interface/AddOns/TrinketMenu/TrinketMenu.toc`.
+3. Launch WoW using the SuperWoW launcher.
+4. Ensure TrinketMenu is checked on the character selection AddOn screen.
 
-## 2. Quick Start & Slash Commands
-
-Toggle, dock, lock, or scale your trinket bars using the `/trinket` or `/trinketmenu` slash commands:
+## Useful Commands & Shortcuts
 
 | Command | Description |
 | :--- | :--- |
-| `/trinket` or `/trinketmenu` | Toggle visibility of the main equipped trinket frame. |
-| `/trinket opt` or `/trinket config` | Open the comprehensive options and auto-queue configuration window. |
-| `/trinket lock` | Lock trinket frames into position, preventing accidental drag or repositioning. |
-| `/trinket unlock` | Unlock trinket frames to freely drag, dock, or re-orient them. |
-| `/trinket reset` | Reset all positions, scaling, and settings to defaults. |
-| `/trinket scale main <0.5 - 2.0>` | Set the exact scale multiplier of the main worn trinket buttons. |
-| `/trinket scale menu <0.5 - 2.0>` | Set the exact scale multiplier of the flyout trinket drawer. |
+| `/trinket` or `/trinketmenu` | Toggle visibility of the main trinket buttons |
+| `/trinket opt` | Open options and auto-queue priority window |
+| `/trinket lock` / `/trinket unlock` | Lock or unlock frame dragging |
+| `/trinket reset` | Reset frame positions, scaling, and settings |
+| `/trinket scale main <0.5 - 2.0>` | Set scale of the equipped trinket buttons |
+| `/trinket scale menu <0.5 - 2.0>` | Set scale of the flyout drawer |
 
-**In-Game Shortcuts:**
-- **Left-Click Trinket**: Activate equipped trinket.
-- **Right-Click Worn Trinket**: Toggle the flyout menu drawer.
-- **Left-Click Menu Trinket**: Equip trinket into the respective slot (or queues swap if in combat).
-- **Alt-Click Worn Trinket**: Toggle auto-queue for that specific slot.
+| Shortcut | Action |
+| :--- | :--- |
+| `Left-Click` Worn Trinket | Use / activate equipped trinket |
+| `Right-Click` Worn Trinket | Toggle flyout trinket drawer |
+| `Left-Click` Drawer Trinket | Equip trinket (or queue if in combat) |
+| `Alt-Click` Worn Trinket | Toggle Auto-Queue for that slot |
 
----
+## Limitations & Notes
 
-## 3. Core Features
-
-- **Flyout Trinket Drawer**: Automatically scans bags for all trinket items and presents them in an organized, configurable grid.
-- **Intelligent Auto-Queue**: Automatically swaps trinkets when your active trinket goes on cooldown and equips passive or ready on-use trinkets.
-- **Combat Delay Protection**: Trinket swaps initiated during combat or death are safely queued and retried after combat or death ends.
-- **Docking Flexibility**: Attach the flyout drawer to any corner of the main frame (or keep it independently placed).
-- **Audio & Visual Readiness Notifications**: Configurable alerts when trinket cooldowns expire.
+- **Combat Restrictions**: Trinkets cannot be swapped while in combat. Requested swaps are placed into a pending queue and completed automatically upon dropping combat.
+- **Identical Items**: Multiple copies of the same trinket are treated as interchangeable instances of that item ID.
+- **ItemRack Coordination**: When ItemRack is performing a set swap, TrinketMenu delays its own equip moves until ItemRack finishes to prevent inventory lockups.
 
 ---
 
-## 4. Technical Architecture & Implementation Details
+For detailed priority list setup, bar docking, and advanced settings, see the [User Guide](docs/USER_GUIDE.md). Technical architecture notes are documented in [INTEGRATION_REVIEW_2026-09-29.md](INTEGRATION_REVIEW_2026-09-29.md).
 
-- **Owned timers (`C_Timer`)**: One-shot updates use `C_Timer.NewTimer`; repeating jobs use `C_Timer.NewTicker`. The old timer frame has no active `OnUpdate` handler.
-- **Structured action identity**: `GetActionInfo` resolves direct item actions. Bag-instance actions and macros use a private tooltip's `GetItem()` item ID; shared icons are never item identity. The optional tiny-tooltip presentation still reads displayed tooltip lines.
-- **Non-Destructive Secure Hooking**: Replaced destructive global function overrides (`UseAction = ...`, `UseInventoryItem = ...`) with native `hooksecurefunc`.
-- **Rule C8 Mouse Passthrough**: Applied `:EnableMouse(false)` across all 32 child cooldown frames (`TrinketMenu_TrinketXCooldown` and `TrinketMenu_MenuXCooldown`), completely preventing cooldown sweeps from intercepting player clicks.
-- **Pure English Standard (Rule H2)**: 100% clean English constants, eliminating legacy multi-locale string bloat.
-- **Suite Synergy (ItemRack & Bagnon)**:
-  - **ItemRack Queue Deference**: Uses the optional `Rack.IsEquipmentSwapActive()` query before issuing a trinket move. Queued intent completes only when the requested trinket is observed in the slot.
-  - **Shared Non-Destructive Hooking**: Coordinates with ItemRack over native `hooksecurefunc("UseInventoryItem")` and `hooksecurefunc("UseAction")` pipelines.
-  - **Bagnon Bag Queue Display**: `TrinketMenu.GetQueuedSlotForItem(link)` exposes read-only queue status for Bagnon tooltips.
+## License & Credits
 
----
-
-## 5. Installation & Engine Requirements
-
-### Mandatory Prerequisites:
-This addon strictly requires the Enhanced 1.12.1 Client Extension Stack:
-
-1. [**ClassicAPI v1.15.15+**](https://github.com/brues-code/ClassicAPI) — Mandatory engine DLL.
-2. [**SuperWoW v2.2+**](https://github.com/balakethelock/SuperWoW) — Mandatory engine DLL.
-
-### Installation Path:
-Extract or clone into your World of Warcraft directory:
-```text
-World of Warcraft 1.12.1/
-└── Interface/
-    └── AddOns/
-        └── TrinketMenu/
-            ├── TrinketMenu.toc
-            ├── TrinketMenu.lua
-            ├── TrinketMenu.xml
-            ├── TrinketMenuOpt.lua
-            ├── TrinketMenuOpt.xml
-            ├── TrinketMenuQueue.lua
-            ├── TrinketMenuQueue.xml
-            └── README.md
-```
-
----
-
-## 6. Credits & Attribution
-
-- **Original Author**: Gello
-- **Classic Modernization & Maintenance**: [Fostercare5988](https://github.com/Fostercare5988)
-
----
-
-## 7. Changelog
-
-### Version 3.9.1 (Inventory Trio Synergy)
-- **Cooperative Swap Scheduling**: Yields combat queue processing while ItemRack is in mid-swap (`Rack.IsEquipmentSwapActive()`), preventing simultaneous item pickups and deadlocks.
-- **Asynchronous Double-Queue Resolution**: Fixed simultaneous top + bottom trinket swapping via sequential `ITEM_LOCK_CHANGED` state machine and `C_Timer` watchdog.
-- **Bagnon Tooltip Coordination**: Exposed queued states for bag tooltip reflection in Bagnon.
-
-### Version 3.9.0
-- **Engine Startup Guard Enforcement**: Upgraded engine dependency guards across all module files (`TrinketMenu.lua`, `TrinketMenuOpt.lua`, `TrinketMenuQueue.lua`) to strictly enforce `MIN_CLASSIC_API = 11400` (`v1.14.0+`) and `SUPERWOW_VERSION` (`v2.2+`).
-- **Modern Lua 5.1 Syntax**: Eradicated all 25 instances of legacy `table.getn(t)` in favor of the native `#` bytecode operator.
-- **Global Table Indexing**: Modernized `getglobal(...)` calls across options and queue modules to direct `_G[...]` table indexing.
-- **Table Recycling**: Replaced `table.setn(list, 0)` with native C++ `table.wipe` for instant garbage-free memory clearing during profile loading and queue sorting.
-
-### Version 3.8.0 (Modern Engine Release)
-- **Engine Guard**: Added strict startup dependency check requiring ClassicAPI v1.14.0+ and SuperWoW v2.2+.
-- **Hardware Timers**: Replaced Lua `OnUpdate` polling frame with native C++ `C_Timer.After` and `C_Timer.NewTicker`.
-- **Secure Hooking**: Replaced global API function overrides with `hooksecurefunc("UseInventoryItem")` and `hooksecurefunc("UseAction")`.
-- **Tooltip Scanning Eradication**: Removed `TrinketMenu_TooltipScan` and replaced with direct item ID resolution.
-- **Rule C8 Mouse Passthrough**: Enforced `:EnableMouse(false)` on all child cooldown frames to eliminate click dead zones.
-- **Rule H5 Compliance**: Added full standard Markdown documentation and cleaned `.toc` metadata.
-
-ClassicAPI v1.15.15 compatibility: action type "equipmentset" is excluded from equipped-item/reagent-use tracking. The published support minimum is v1.15.15+; no native-set import or duplicate WEAR_EQUIPMENT_SET handler is added. Verify normal spell/item actions and a ClassicAPI equipment-set action in-game after updating the DLL and restarting WoW.
-
-
-### Timer ownership
-
-One-shot refresh/queue timers use cancellable `C_Timer.NewTimer` handles. Stopping
-or replacing a timer prevents its old callback from running or clearing a newer
-request. Repeating timers keep their existing ticker behavior. Run
-`python -B tests/test_timers.py <directory-containing-lupa>` for cancellation and
-callback-rescheduling regressions; trinket swaps still need in-game verification.
-
-
-## Integration review (2026-09-29)
-
-See [the source audit and in-game checklist](INTEGRATION_REVIEW_2026-09-29.md).
-Flyout and auto-queue requests retain the chosen base item ID through combat,
-bag changes and delayed equipment responses. Moves use
-`C_Item.EquipItemByName({bagID=bag, slotIndex=slot}, destinationSlot)` after
-cursor/lock/ItemRack checks. Its return does not confirm success. Same-ID copies
-remain interchangeable, consistent with the existing ID-based sort lists;
-name-only macro requests select the first exact name match when requested.
-Malformed numeric UI settings and queue roots are normalized on load. Valid
-settings and queue priority/delay policies are retained. Scale commands accept
-positive finite values; the examples above are suggested sizes, not a new limit.
-
-Run `python -B tests/test_transactions.py <directory-containing-lupa>` and
-`python -B tests/test_timers.py <directory-containing-lupa>`: 26 mock Lua tests.
-These do not load the native DLL, render XML frames or validate server timing.
-The required ClassicAPI/SuperWoW versions remain unchanged.
+Original author: Gello. Maintained by [Fostercare5988](https://github.com/Fostercare5988). Licensed under the MIT License.

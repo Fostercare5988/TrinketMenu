@@ -55,7 +55,7 @@ A trinket management, flyout drawer, and auto-swapping add-on for World of Warcr
 
 ---
 
-For detailed priority list setup, bar docking, and advanced settings, see the [User Guide](docs/USER_GUIDE.md). Technical architecture notes are documented in [INTEGRATION_REVIEW_2026-09-29.md](INTEGRATION_REVIEW_2026-09-29.md).
+For detailed priority list setup, bar docking, and advanced settings, see the [User Guide](docs/USER_GUIDE.md).
 
 ## License & Credits
 

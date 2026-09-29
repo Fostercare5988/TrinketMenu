@@ -11,13 +11,25 @@ end
 TrinketMenu.PausedQueue = {} -- 0 or 1 whether queue is paused
 
 function TrinketMenu.QueueInit()
-	TrinketMenuQueue = TrinketMenuQueue or {
+	TrinketMenuQueue = type(TrinketMenuQueue)=="table" and TrinketMenuQueue or {
 		Stats = {}, -- indexed by id of trinket, delay, priority and keep
 		Sort = {}, -- indexed by number, ids in order of use
 		Enabled = {} -- 0 or 1 whether auto queue is on for the slot
 	}
-	TrinketMenuQueue.Sort[0] = TrinketMenuQueue.Sort[0] or {}
-	TrinketMenuQueue.Sort[1] = TrinketMenuQueue.Sort[1] or {}
+	for _, key in ipairs({"Stats", "Sort", "Enabled", "Profiles"}) do
+		if type(TrinketMenuQueue[key])~="table" then TrinketMenuQueue[key] = {} end
+	end
+	for which=0,1 do
+		if type(TrinketMenuQueue.Sort[which])~="table" then TrinketMenuQueue.Sort[which] = {} end
+	end
+	for id, stats in pairs(TrinketMenuQueue.Stats) do
+		if type(stats)~="table" then TrinketMenuQueue.Stats[id] = nil
+		elseif stats.delay then
+			local delay = tonumber(stats.delay)
+			if not delay or delay~=delay or delay<0 or delay==math.huge then delay = nil end
+			stats.delay = delay
+		end
+	end
 	TrinketMenu_SubQueueFrame:SetBackdropBorderColor(.3,.3,.3,1)
 	TrinketMenu_ProfilesFrame:SetBackdropBorderColor(.3,.3,.3,1)
 	TrinketMenu_ProfilesListFrame:SetBackdropBorderColor(.3,.3,.3,1)
@@ -52,18 +64,9 @@ end
 
 function TrinketMenu.GetID(bag,slot)
 	local id
-	if slot then
-		if type(C_Container) == "table" and type(C_Container.GetContainerItemID) == "function" then
-			local cid = C_Container.GetContainerItemID(bag, slot)
-			if cid and cid > 0 then
-				return tostring(cid)
-			end
-		end
-		_,_,id = string.find(GetContainerItemLink(bag,slot) or "","item:(%d+)")
-	else
-		_,_,id = string.find(GetInventoryItemLink("player",bag) or "","item:(%d+)")
-	end
-	return id
+	if slot then id = C_Container.GetContainerItemID(bag,slot)
+	else id = GetInventoryItemID("player",bag) end
+	if id and id>0 then return tostring(id) end
 end
 
 function TrinketMenu.GetNameByID(id)
@@ -387,10 +390,13 @@ function TrinketMenu.ProcessAutoQueue(which)
 				if TrinketMenu.WatchItem[name] then
 					bag,slot = TrinketMenu.WatchItem[name].bag,TrinketMenu.WatchItem[name].slot
 					if bag then
-						if string.find(GetContainerItemLink(bag,slot) or "",name,1,1) then
+						if C_Container.GetContainerItemID(bag,slot)~=tonumber(list[i]) then
+							_,bag,slot = TrinketMenu.FindItem(name,nil,list[i])
+						end
+						if bag then
 							if TrinketMenu.TrinketNearReady(bag,slot) then
-								if TrinketMenu.CombatQueue[which]~=name then
-									TrinketMenu.EquipTrinketByName(name,13+which)
+								if not TrinketMenu.CombatQueue[which] or TrinketMenu.QueueItemIDs[which]~=tonumber(list[i]) then
+									TrinketMenu.EquipTrinketByName(name,13+which,list[i])
 								end
 								break
 							end

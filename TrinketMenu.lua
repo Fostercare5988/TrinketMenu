@@ -15,7 +15,7 @@ TrinketMenu = {}
 
 function TrinketMenu.LoadDefaults()
 
-	TrinketMenuOptions = TrinketMenuOptions or {
+	TrinketMenuOptions = type(TrinketMenuOptions)=="table" and TrinketMenuOptions or {
 		IconPos = -100,				-- angle of initial minimap icon position
 		ShowIcon = "ON",			-- whether to show the minimap button
 		SquareMinimap = "OFF",		-- whether the minimap is square instead of circular
@@ -39,7 +39,7 @@ function TrinketMenu.LoadDefaults()
 		StopOnSwap = "OFF"			-- whether to stop auto queue on all manual swaps
 	}
 
-	TrinketMenuPerOptions = TrinketMenuPerOptions or {
+	TrinketMenuPerOptions = type(TrinketMenuPerOptions)=="table" and TrinketMenuPerOptions or {
 		MainDock = "BOTTOMRIGHT",	-- corner of main window docked to
 		MenuDock = "BOTTOMLEFT",	-- corner menu window is docked from
 		MainOrient = "HORIZONTAL",	-- direction of main window
@@ -52,6 +52,33 @@ function TrinketMenu.LoadDefaults()
 		FirstUse = true,			-- whether this is the first time this user has used the mod
 		ItemsUsed = {},				-- table of trinkets used and their cooldown status
 	}
+	local options, per = TrinketMenuOptions, TrinketMenuPerOptions
+	local function number(value, default, minimum, maximum)
+		value = tonumber(value)
+		if not value or value~=value or value==math.huge or value==-math.huge
+			or (minimum and value<minimum) or (maximum and value>maximum) then return default end
+		return value
+	end
+	options.IconPos = number(options.IconPos, -100)
+	options.Columns = math.floor(number(options.Columns, 4, 1, 30))
+	per.MainScale = number(per.MainScale, 1, 0)
+	per.MenuScale = number(per.MenuScale, 1, 0)
+	if per.MainScale==0 then per.MainScale=1 end
+	if per.MenuScale==0 then per.MenuScale=1 end
+	per.XPos = number(per.XPos, 400)
+	per.YPos = number(per.YPos, 400)
+	per.ItemsUsed = type(per.ItemsUsed)=="table" and per.ItemsUsed or {}
+	for name, count in pairs(per.ItemsUsed) do
+		if type(name)~="string" or number(count, -1, 0)==-1 then
+			per.ItemsUsed[name] = nil
+		else
+			per.ItemsUsed[name] = tonumber(count)
+		end
+	end
+	if not TrinketMenu.DockStats[tostring(per.MainDock or "")..tostring(per.MenuDock or "")] then
+		per.MainDock, per.MenuDock = "BOTTOMRIGHT", "BOTTOMLEFT"
+	end
+
 end
 
 --[[ Misc Variables ]]--
@@ -63,6 +90,7 @@ TrinketMenu.MaxTrinkets = 30 -- add more to TrinketMenu_MenuFrame if this change
 TrinketMenu.BaggedTrinkets = {} -- indexed by number, 1-30 of trinkets in the menu
 TrinketMenu.NumberOfTrinkets = 0 -- number of trinkets in the menu
 TrinketMenu.CombatQueue = {} -- [0] or [1] = name of trinket queued for slot 0 or 1
+TrinketMenu.QueueItemIDs = {} -- runtime identities; names remain display/API input
 TrinketMenu.PendingSwap = {} -- runtime attempts awaiting observed equipment
 TrinketMenu.SwapAttempts = {} -- bounded retries for rejected moves
 TrinketMenu.Corners = { "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }
@@ -206,17 +234,7 @@ function TrinketMenu.BuildMenu()
 	-- go through bags and gather trinkets into .BaggedTrinkets
 	for i=0,4 do
 		for j=1,GetContainerNumSlots(i) do
-			local itemID
-			if type(C_Container) == "table" and type(C_Container.GetContainerItemID) == "function" then
-				itemID = C_Container.GetContainerItemID(i, j)
-			end
-			if not itemID then
-				local itemLink = GetContainerItemLink(i, j)
-				if itemLink then
-					local _, _, lid = string.find(itemLink, "item:(%d+)")
-					itemID = tonumber(lid)
-				end
-			end
+			local itemID = C_Container.GetContainerItemID(i,j)
 
 			if itemID and itemID > 0 then
 				local itemName, _, quality, _, _, _, _, equipSlot, itemTexture = GetItemInfo(itemID)
@@ -360,31 +378,7 @@ function TrinketMenu.Initialize()
 		end
 	end)
 
-	hooksecurefunc("UseAction", function(slot,cursor,self)
-        -- A set may use a trinket icon, but clicking it does not use that trinket.
-        if GetActionInfo(slot) == "equipmentset" then return end
-		if IsEquippedAction(slot) then
-			local actionType, actionID = GetActionInfo(slot)
-			local link13 = GetInventoryItemLink("player", 13)
-			local link14 = GetInventoryItemLink("player", 14)
-			local _, _, id13 = string.find(link13 or "", "item:(%d+)")
-			local _, _, id14 = string.find(link14 or "", "item:(%d+)")
-			if actionType == "item" and actionID then
-				if tostring(actionID) == tostring(id13) then
-					TrinketMenu.ReflectTrinketUse(13)
-				elseif tostring(actionID) == tostring(id14) then
-					TrinketMenu.ReflectTrinketUse(14)
-				end
-			else
-				local actTex = GetActionTexture(slot)
-				if actTex and actTex == GetInventoryItemTexture("player", 13) then
-					TrinketMenu.ReflectTrinketUse(13)
-				elseif actTex and actTex == GetInventoryItemTexture("player", 14) then
-					TrinketMenu.ReflectTrinketUse(14)
-				end
-			end
-		end
-	end)
+	hooksecurefunc("UseAction", TrinketMenu.OnUseAction)
 
 	-- Rule C8: Child Cooldown Mouse Passthrough
 	local cd0 = TrinketMenu_Trinket0Cooldown
@@ -432,31 +426,23 @@ function TrinketMenu.ItemInfo(slot)
 	return texture,name,equipLoc
 end
 
-function TrinketMenu.FindItem(name,includeInventory)
-	if not name then return end
+-- IDs select queue items; name-only macro inputs require an exact name.
+function TrinketMenu.FindItem(name,includeInventory,itemID)
+	if not name and not itemID then return end
+	itemID = tonumber(itemID)
 	if includeInventory then
 		for i=13,14 do
-			local link = GetInventoryItemLink("player",i)
-			if link and string.find(link,name,1,1) then
+			local id = GetInventoryItemID("player",i)
+			if id and ((itemID and id==itemID) or (not itemID and GetItemInfo(id)==name)) then
 				return i
 			end
 		end
 	end
 	for i=0,4 do
 		for j=1,GetContainerNumSlots(i) do
-			if type(C_Container) == "table" and type(C_Container.GetContainerItemID) == "function" then
-				local id = C_Container.GetContainerItemID(i, j)
-				if id and id > 0 then
-					local iname = GetItemInfo(id)
-					if iname == name then
-						return nil, i, j
-					end
-				end
-			else
-				local link = GetContainerItemLink(i, j)
-				if link and string.find(link, name, 1, 1) then
-					return nil, i, j
-				end
+			local id = C_Container.GetContainerItemID(i,j)
+			if id and id>0 and ((itemID and id==itemID) or (not itemID and GetItemInfo(id)==name)) then
+				return nil,i,j
 			end
 		end
 	end
@@ -747,7 +733,7 @@ function TrinketMenu.MenuTrinket_OnClick()
 				TrinketMenu.ReflectQueueEnabled()
 			end
 		end
-		TrinketMenu.EquipTrinketByName(TrinketMenu.BaggedTrinkets[this:GetID()].name,slot)
+		TrinketMenu.EquipTrinketByName(TrinketMenu.BaggedTrinkets[this:GetID()].name,slot,TrinketMenu.BaggedTrinkets[this:GetID()].id)
 		if not IsShiftKeyDown() and TrinketMenuOptions.KeepOpen=="OFF" then
 			TrinketMenu_MenuFrame:Hide()
 		end
@@ -861,6 +847,8 @@ function TrinketMenu.StopScaling()
 end
 
 function TrinketMenu.ScaleFrame(scale)
+	scale = tonumber(scale)
+	if not scale or scale~=scale or scale<=0 or scale==math.huge then return end
 	local frame = TrinketMenu.FrameToScale
 	local oldscale = frame:GetScale() or 1
 	local framex = (frame:GetLeft() or TrinketMenuPerOptions.XPos)* oldscale
@@ -909,6 +897,33 @@ function TrinketMenu.UpdateMenuCooldowns()
 end
 
 --[[ Item use ]]
+
+-- Read structured item identity, never infer use from a shared icon.
+function TrinketMenu.OnUseAction(slot)
+	local actionType, id = GetActionInfo(slot)
+	if actionType~="item" and actionType~="macro" then return end
+	if not IsEquippedAction(slot) then return end
+	if not id or actionType=="macro" then
+		local tooltip = TrinketMenu.ActionTooltip
+		if not tooltip then
+			tooltip = CreateFrame("GameTooltip", "TrinketMenu_ActionTooltip", UIParent, "GameTooltipTemplate")
+			TrinketMenu.ActionTooltip = tooltip
+		end
+		tooltip:SetOwner(UIParent,"ANCHOR_NONE")
+		tooltip:ClearLines()
+		tooltip:SetAction(slot)
+		local _, _, itemID = tooltip:GetItem()
+		id = itemID
+		tooltip:Hide()
+	end
+	if not id then return end
+	for inv=13,14 do
+		if GetInventoryItemID("player",inv)==id then
+			TrinketMenu.ReflectTrinketUse(inv)
+			return
+		end
+	end
+end
 
 function TrinketMenu.ReflectTrinketUse(slot)
 	getglobal("TrinketMenu_Trinket"..(slot-13)):SetChecked(1)
@@ -1055,31 +1070,39 @@ end
 
 -- Optional read-only integration for tooltip addons. The queue stays owned here.
 function TrinketMenu.GetQueuedSlotForItem(link)
-	local _, _, name = string.find(link or "", "%[(.+)%]")
-	if not name then return nil end
-	if TrinketMenu.CombatQueue[0] == name then return 13 end
-	if TrinketMenu.CombatQueue[1] == name then return 14 end
+	local _, _, id = string.find(link or "", "item:(%d+)")
+	id = tonumber(id)
+	if not id then return end
+	for which=0,1 do
+		if TrinketMenu.CombatQueue[which] and TrinketMenu.QueueItemIDs[which]==id then return 13+which end
+	end
 end
 
-function TrinketMenu.EquipTrinketByName(name,slot)
+function TrinketMenu.EquipTrinketByName(name,slot,itemID)
 	if not name then return end
 	local which = slot-13
 	if which~=0 and which~=1 then return end
-	local queue = TrinketMenu.CombatQueue
-	if queue[which]==name then
-		queue[which] = nil -- a second selection cancels this slot's intent
-		TrinketMenu.SwapAttempts[which] = nil
+	itemID = tonumber(itemID)
+	if not itemID then
+		local inv, bag, bagSlot = TrinketMenu.FindItem(name,1)
+		if inv then itemID = GetInventoryItemID("player",inv)
+		elseif bag then itemID = C_Container.GetContainerItemID(bag,bagSlot) end
+	end
+	if not itemID or itemID<=0 then return end
+	local queue, ids = TrinketMenu.CombatQueue, TrinketMenu.QueueItemIDs
+	if queue[which] and ids[which]==itemID then
+		queue[which], ids[which] = nil, nil -- repeat selection cancels intent
 	else
-		if queue[1-which]==name then
-			queue[1-which] = nil
+		if ids[1-which]==itemID then
+			queue[1-which], ids[1-which] = nil, nil
 			TrinketMenu.SwapAttempts[1-which] = nil
 		end
-		queue[which] = name -- latest selection for this slot wins
-		TrinketMenu.SwapAttempts[which] = nil
+		queue[which], ids[which] = name, itemID -- latest selection wins
 	end
+	TrinketMenu.SwapAttempts[which] = nil
 	TrinketMenu.UpdateCombatQueue()
 	TrinketMenu.ProcessCombatQueue()
-end	
+end
 
 function TrinketMenu.ProcessCombatQueue()
 	if TrinketMenu.IssuingSwap then return end
@@ -1091,8 +1114,8 @@ function TrinketMenu.ProcessCombatQueue()
 		for which=0,1 do
 			local pending = TrinketMenu.PendingSwap[which]
 			if pending then
-				local link = GetInventoryItemLink("player", 13+which)
-				if (link and string.find(link, "["..pending.name.."]", 1, true)) or GetTime()>=pending.deadline then
+				local id = GetInventoryItemID("player", 13+which)
+				if id==pending.id or GetTime()>=pending.deadline then
 					TrinketMenu.PendingSwap[which] = nil
 				else
 					TrinketMenu.StartTimer("ProcessCombatQueue", 0.25)
@@ -1105,15 +1128,15 @@ function TrinketMenu.ProcessCombatQueue()
 	end
 	-- ItemRack exposes only its transaction state; its queue stays private.
 	if (Rack and Rack.IsEquipmentSwapActive and Rack.IsEquipmentSwapActive())
-		or CursorHasItem() or SpellIsTargeting() then
+		or GetCursorInfo() or CursorHasItem() or SpellIsTargeting() then
 		TrinketMenu.StartTimer("ProcessCombatQueue", 0.25)
 		return
 	end
 	for which=0,1 do
 		local pending = TrinketMenu.PendingSwap[which]
 		if pending then
-			local link = GetInventoryItemLink("player", 13+which)
-			if (link and string.find(link, "["..pending.name.."]", 1, true)) or GetTime()>=pending.deadline then
+			local id = GetInventoryItemID("player", 13+which)
+			if id==pending.id or GetTime()>=pending.deadline then
 				TrinketMenu.PendingSwap[which] = nil
 			else
 				TrinketMenu.StartTimer("ProcessCombatQueue", 0.25)
@@ -1125,14 +1148,14 @@ function TrinketMenu.ProcessCombatQueue()
 		local name = queue[which]
 		if name then
 			local slot = 13+which
-			local link = GetInventoryItemLink("player", slot)
-			if link and string.find(link, "["..name.."]", 1, true) then
+			local itemID = TrinketMenu.QueueItemIDs[which]
+			if GetInventoryItemID("player", slot)==itemID then
 				queue[which] = nil -- complete only after equipment is observed
 				TrinketMenu.PendingSwap[which] = nil
 				TrinketMenu.SwapAttempts[which] = nil
 				TrinketMenu.UpdateCombatQueue()
 			else
-				local _, bag, bagSlot = TrinketMenu.FindItem(name)
+				local _, bag, bagSlot = TrinketMenu.FindItem(name,nil,itemID)
 				if not bag then
 					queue[which] = nil -- removed item or cancelled move
 					TrinketMenu.SwapAttempts[which] = nil
@@ -1150,15 +1173,10 @@ function TrinketMenu.ProcessCombatQueue()
 						return
 					end
 					TrinketMenu.SwapAttempts[which] = (TrinketMenu.SwapAttempts[which] or 0)+1
-					TrinketMenu.PendingSwap[which] = { name=name, deadline=GetTime()+2 }
+					TrinketMenu.PendingSwap[which] = { id=itemID, deadline=GetTime()+2 }
 					TrinketMenu.IssuingSwap = true
-					PickupContainerItem(bag, bagSlot)
-					PickupInventoryItem(slot)
+					C_Item.EquipItemByName({bagID=bag,slotIndex=bagSlot},slot)
 					TrinketMenu.IssuingSwap = nil
-					if CursorHasItem() then
-						ClearCursor()
-						TrinketMenu.PendingSwap[which] = nil
-					end
 					getglobal("TrinketMenu_Trinket"..which.."Icon"):SetDesaturated(1)
 					TrinketMenu.StartTimer("UpdateWornTrinkets")
 					TrinketMenu.StartTimer("ProcessCombatQueue", 0.25)
@@ -1179,7 +1197,7 @@ function TrinketMenu.UpdateCombatQueue()
 		local icon = getglobal("TrinketMenu_Trinket"..which.."Queue")
 		icon:Hide()
 		if trinket then
-			_,bag,slot = TrinketMenu.FindItem(trinket)
+			_,bag,slot = TrinketMenu.FindItem(trinket,nil,TrinketMenu.QueueItemIDs[which])
 			if bag then
 				icon:SetTexture(GetContainerItemInfo(bag,slot))
 				icon:Show()

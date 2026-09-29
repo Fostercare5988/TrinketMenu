@@ -15,7 +15,7 @@ A trinket management and auto-swapping suite engineered natively for the **Enhan
 
 **TrinketMenu** provides an intuitive, docked or floating on-screen bar displaying your currently equipped trinkets along with a flyout drawer of all trinkets carried in your bags.
 
-This modernized edition has been completely re-architected from the ground up for modern high-performance engines. All legacy 2006 Lua `OnUpdate` timer frames, hidden tooltip scraping hacks, and global API overwrites have been eradicated and replaced with native C++ **`C_Timer`** hardware dispatchers and non-intrusive **`hooksecurefunc`** pipelines.
+Delayed work uses cancellable **`C_Timer.NewTimer`** handles and repeating jobs use **`C_Timer.NewTicker`**. Item-use observers use **`hooksecurefunc`**. Queued equipment requests retain item IDs and complete only when the requested ID is observed in the destination slot.
 
 ---
 
@@ -45,7 +45,7 @@ Toggle, dock, lock, or scale your trinket bars using the `/trinket` or `/trinket
 
 - **Flyout Trinket Drawer**: Automatically scans bags for all trinket items and presents them in an organized, configurable grid.
 - **Intelligent Auto-Queue**: Automatically swaps trinkets when your active trinket goes on cooldown and equips passive or ready on-use trinkets.
-- **Combat Delay Protection**: Trinket swaps initiated during combat or death are safely queued and executed the split second combat ends.
+- **Combat Delay Protection**: Trinket swaps initiated during combat or death are safely queued and retried after combat or death ends.
 - **Docking Flexibility**: Attach the flyout drawer to any corner of the main frame (or keep it independently placed).
 - **Audio & Visual Readiness Notifications**: Configurable alerts when trinket cooldowns expire.
 
@@ -53,8 +53,8 @@ Toggle, dock, lock, or scale your trinket bars using the `/trinket` or `/trinket
 
 ## 4. Technical Architecture & Implementation Details
 
-- **Native Hardware Timers (`C_Timer`)**: Eradicated the legacy 2006 Lua `TrinketMenu_TimersFrame` `OnUpdate` polling loop. All delayed updates and tickers now run directly in C++ via `C_Timer.After` and `C_Timer.NewTicker`.
-- **Zero Tooltip Scraping**: Eliminated `TrinketMenu_TooltipScan` and GameTooltip parsing. Action bar trinket activations are resolved via `GetActionInfo` and direct Item ID comparisons.
+- **Owned timers (`C_Timer`)**: One-shot updates use `C_Timer.NewTimer`; repeating jobs use `C_Timer.NewTicker`. The old timer frame has no active `OnUpdate` handler.
+- **Structured action identity**: `GetActionInfo` resolves direct item actions. Bag-instance actions and macros use a private tooltip's `GetItem()` item ID; shared icons are never item identity. The optional tiny-tooltip presentation still reads displayed tooltip lines.
 - **Non-Destructive Secure Hooking**: Replaced destructive global function overrides (`UseAction = ...`, `UseInventoryItem = ...`) with native `hooksecurefunc`.
 - **Rule C8 Mouse Passthrough**: Applied `:EnableMouse(false)` across all 32 child cooldown frames (`TrinketMenu_TrinketXCooldown` and `TrinketMenu_MenuXCooldown`), completely preventing cooldown sweeps from intercepting player clicks.
 - **Pure English Standard (Rule H2)**: 100% clean English constants, eliminating legacy multi-locale string bloat.
@@ -102,7 +102,7 @@ World of Warcraft 1.12.1/
 ## 7. Changelog
 
 ### Version 3.9.1 (Inventory Trio Synergy)
-- **Cooperative Swap Scheduling**: Yields combat queue processing while ItemRack is in mid-swap (`Rack.SetSwapping`), preventing simultaneous item pickups and deadlocks.
+- **Cooperative Swap Scheduling**: Yields combat queue processing while ItemRack is in mid-swap (`Rack.IsEquipmentSwapActive()`), preventing simultaneous item pickups and deadlocks.
 - **Asynchronous Double-Queue Resolution**: Fixed simultaneous top + bottom trinket swapping via sequential `ITEM_LOCK_CHANGED` state machine and `C_Timer` watchdog.
 - **Bagnon Tooltip Coordination**: Exposed queued states for bag tooltip reflection in Bagnon.
 
@@ -130,3 +130,22 @@ or replacing a timer prevents its old callback from running or clearing a newer
 request. Repeating timers keep their existing ticker behavior. Run
 `python -B tests/test_timers.py <directory-containing-lupa>` for cancellation and
 callback-rescheduling regressions; trinket swaps still need in-game verification.
+
+
+## Integration review (2026-09-29)
+
+See [the source audit and in-game checklist](INTEGRATION_REVIEW_2026-09-29.md).
+Flyout and auto-queue requests retain the chosen base item ID through combat,
+bag changes and delayed equipment responses. Moves use
+`C_Item.EquipItemByName({bagID=bag, slotIndex=slot}, destinationSlot)` after
+cursor/lock/ItemRack checks. Its return does not confirm success. Same-ID copies
+remain interchangeable, consistent with the existing ID-based sort lists;
+name-only macro requests select the first exact name match when requested.
+Malformed numeric UI settings and queue roots are normalized on load. Valid
+settings and queue priority/delay policies are retained. Scale commands accept
+positive finite values; the examples above are suggested sizes, not a new limit.
+
+Run `python -B tests/test_transactions.py <directory-containing-lupa>` and
+`python -B tests/test_timers.py <directory-containing-lupa>`: 26 mock Lua tests.
+These do not load the native DLL, render XML frames or validate server timing.
+The required ClassicAPI/SuperWoW versions remain unchanged.
